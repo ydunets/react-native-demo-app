@@ -286,7 +286,7 @@ Kii Mobile App Structure
 
 ```
 Keycloak Server
-├── fusion-test (Development)
+├── expo-app-realm (Development)
 │   ├─ Test users
 │   ├─ Development settings
 │   └─ Loose policies
@@ -570,7 +570,7 @@ export const envConfig = {
   dev: {
     apiBaseURL: "http://localhost:8000",
     keycloakURL: "http://localhost:8080",
-    realm: "fusion-test"
+    realm: "expo-app-realm"
   },
   staging: {
     apiBaseURL: "https://api-staging.example.com",

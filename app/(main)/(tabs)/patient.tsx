@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,8 +5,16 @@ import { Button } from '@/components/nativewindui/Button';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
+import { useAuthContext } from '@/contexts/auth';
 
 export default function PatientScreen() {
+  const {logout} = useAuthContext();
+
+  const handleLogoutPress = async () => {
+    await logout();
+    // Don't need router.replace - the guard in (main)/_layout.tsx will handle it
+  };
+  
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
       <ScrollView className="flex-1">
@@ -69,7 +76,7 @@ export default function PatientScreen() {
         <View className="mt-4 gap-2">
           <Button
             variant="plain"
-            onPress={() => router.replace('/(auth)/login')}>
+            onPress={handleLogoutPress}>
             <Text>Logout</Text>
           </Button>
         </View>

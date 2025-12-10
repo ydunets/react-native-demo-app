@@ -27,7 +27,7 @@ The discovery mechanism is defined in **RFC 8414** (OAuth 2.0 Authorization Serv
 ### Keycloak Example
 
 ```
-http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
+http://localhost:8080/realms/expo-app-realm/.well-known/openid-configuration
 ```
 
 ---
@@ -38,12 +38,12 @@ http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
 
 ```json
 {
-  "issuer": "http://localhost:8080/realms/fusion-test",
-  "authorization_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/auth",
-  "token_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/token",
-  "userinfo_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/userinfo",
-  "end_session_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/logout",
-  "jwks_uri": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs",
+  "issuer": "http://localhost:8080/realms/expo-app-realm",
+  "authorization_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/auth",
+  "token_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/token",
+  "userinfo_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/userinfo",
+  "end_session_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/logout",
+  "jwks_uri": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs",
   "scopes_supported": ["openid", "profile", "email"],
   "response_types_supported": ["code", "token", "id_token"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
@@ -57,7 +57,7 @@ http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
 
 | Field                           | Purpose                          | Example                                    |
 | ------------------------------- | -------------------------------- | ------------------------------------------ |
-| **issuer**                      | OAuth provider identifier        | `http://localhost:8080/realms/fusion-test` |
+| **issuer**                      | OAuth provider identifier        | `http://localhost:8080/realms/expo-app-realm` |
 | **authorization_endpoint**      | Where to send user for login     | `/protocol/openid-connect/auth`            |
 | **token_endpoint**              | Exchange code for tokens         | `/protocol/openid-connect/token`           |
 | **userinfo_endpoint**           | Get user profile information     | `/protocol/openid-connect/userinfo`        |
@@ -155,15 +155,15 @@ export const useKeycloakAuth = () => {
 ```typescript
 // ❌ Hardcoded endpoints - fragile and error-prone
 const authEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/auth";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/auth";
 const tokenEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/token";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/token";
 const userInfoEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/userinfo";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/userinfo";
 const logoutEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/logout";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/logout";
 const jwksUri =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs";
 
 // If Keycloak changes endpoints or structure → app breaks!
 // If switching to different provider (Auth0, Azure AD) → need to rewrite all endpoints
@@ -235,7 +235,7 @@ const getDiscovery = (env: "dev" | "staging" | "prod") => {
   return useAutoDiscovery(`${keycloakUrl}/realms/${realm}`);
 };
 
-// dev: http://localhost:8080/realms/fusion-test
+// dev: http://localhost:8080/realms/expo-app-realm
 // staging: https://staging-auth.example.com/realms/fusion-staging
 // prod: https://auth.example.com/realms/fusion-prod
 // All work without code changes!
@@ -246,7 +246,7 @@ const getDiscovery = (env: "dev" | "staging" | "prod") => {
 ```typescript
 // Works with any OAuth 2.0/OIDC provider
 const keycloakDiscovery = useAutoDiscovery(
-  "http://localhost:8080/realms/fusion-test"
+  "http://localhost:8080/realms/expo-app-realm"
 );
 
 const auth0Discovery = useAutoDiscovery("https://your-tenant.auth0.com");
@@ -296,7 +296,7 @@ interface DiscoveryMetadata {
 ```typescript
 // Discovery provides JWKS URI for token validation
 const jwksUri = discovery.jwksUri;
-// http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs
+// http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs
 
 // Use this to validate token signatures
 const publicKeys = await fetchJWKS(jwksUri);
@@ -332,7 +332,7 @@ if (!supportedAlgorithms.includes(tokenHeader.alg)) {
 export const envConfig = {
   dev: {
     keycloakURL: "http://localhost:8080",
-    realm: "fusion-test",
+    realm: "expo-app-realm",
     clientId: "fusion-mobile-dev"
   },
   staging: {
@@ -394,7 +394,7 @@ Each realm has its own:
 ```typescript
 // Dev
 const devDiscovery = useAutoDiscovery(
-  "http://localhost:8080/realms/fusion-test"
+  "http://localhost:8080/realms/expo-app-realm"
 );
 
 // Staging
@@ -518,7 +518,7 @@ Cause: Incorrect realm or Keycloak URL
 Solution:
 const correctUrl = `${keycloakURL}/realms/${realm}`;
 // Verify .well-known/openid-configuration is accessible
-// curl http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
+// curl http://localhost:8080/realms/expo-app-realm/.well-known/openid-configuration
 ```
 
 #### Issue 2: CORS Errors

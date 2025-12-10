@@ -2,10 +2,12 @@
 name: "keycloak-service-generation"
 description: "Generate Keycloak service implementation based on YouTube video tutorial and existing codebase patterns. Creates comprehensive Keycloak service with OAuth 2.0 discovery document support, token management, and React Query integration."
 agent: "agent"
-tools: ["codebase", "fetch", "todos"]
+tools: ["codebase", "fetch", "todos", "runSubagent"]
 ---
 
-# Keycloak Service Generation Prompt
+
+
+# Keycloak Service Generation Prompt (tag: keycloak-service-generation prompt)
 
 ## Task Overview
 

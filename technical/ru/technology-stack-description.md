@@ -27,7 +27,7 @@ Backend Kii Health Mobile строится на основе Project Fusion — 
 
 Project Fusion состоит из несколько взаимосвязанных микросервисов:
 
-**Keycloak Authentication Server** — отдельный компонент, отвечающий за аутентификацию и авторизацию. Использует стандарты OAuth 2.0 и OpenID Connect с поддержкой PKCE (Proof Key for Public Clients). Поддерживает несколько realm'ов для разных окружений: fusion-test для разработки, fusion-staging для предпроизводства, и fusion-prod для production.
+**Keycloak Authentication Server** — отдельный компонент, отвечающий за аутентификацию и авторизацию. Использует стандарты OAuth 2.0 и OpenID Connect с поддержкой PKCE (Proof Key for Public Clients). Поддерживает несколько realm'ов для разных окружений: expo-app-realm для разработки, fusion-staging для предпроизводства, и fusion-prod для production.
 
 **Messaging Service** — микросервис, обрабатывающий отправку, получение и хранение сообщений между пользователями. Интегрирован с SQLite на мобильном устройстве для локального кеширования.
 
@@ -164,7 +164,7 @@ Project Fusion состоит из несколько взаимосвязанн
 
 Keycloak поддерживает несколько изолированных realm'ов для разных окружений:
 
-- **fusion-test** — для разработки, с тестовыми пользователями и мягкими политиками
+- **expo-app-realm** — для разработки, с тестовыми пользователями и мягкими политиками
 - **fusion-staging** — для предпроизводства, приближенное к production
 - **fusion-prod** — для production, со строгими требованиями безопасности
 
@@ -412,7 +412,7 @@ export const envConfig = {
   dev: {
     apiBaseURL: "http://localhost:8000",
     keycloakURL: "http://localhost:8080",
-    realm: "fusion-test"
+    realm: "expo-app-realm"
   },
   staging: {
     apiBaseURL: "https://api-staging.example.com",

@@ -27,7 +27,7 @@ Discovery Document — это стандартизированный JSON endpoi
 ### Пример Keycloak
 
 ```
-http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
+http://localhost:8080/realms/expo-app-realm/.well-known/openid-configuration
 ```
 
 ---
@@ -38,12 +38,12 @@ http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
 
 ```json
 {
-  "issuer": "http://localhost:8080/realms/fusion-test",
-  "authorization_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/auth",
-  "token_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/token",
-  "userinfo_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/userinfo",
-  "end_session_endpoint": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/logout",
-  "jwks_uri": "http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs",
+  "issuer": "http://localhost:8080/realms/expo-app-realm",
+  "authorization_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/auth",
+  "token_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/token",
+  "userinfo_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/userinfo",
+  "end_session_endpoint": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/logout",
+  "jwks_uri": "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs",
   "scopes_supported": ["openid", "profile", "email"],
   "response_types_supported": ["code", "token", "id_token"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
@@ -57,7 +57,7 @@ http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
 
 | Поле                            | Назначение                             | Пример                                     |
 | ------------------------------- | -------------------------------------- | ------------------------------------------ |
-| **issuer**                      | Идентификатор OAuth провайдера         | `http://localhost:8080/realms/fusion-test` |
+| **issuer**                      | Идентификатор OAuth провайдера         | `http://localhost:8080/realms/expo-app-realm` |
 | **authorization_endpoint**      | Куда отправить пользователя для логина | `/protocol/openid-connect/auth`            |
 | **token_endpoint**              | Обменять код на токены                 | `/protocol/openid-connect/token`           |
 | **userinfo_endpoint**           | Получить информацию о профиле          | `/protocol/openid-connect/userinfo`        |
@@ -155,15 +155,15 @@ export const useKeycloakAuth = () => {
 ```typescript
 // ❌ Хардкодированные endpoint'ы - хрупко и подвержено ошибкам
 const authEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/auth";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/auth";
 const tokenEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/token";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/token";
 const userInfoEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/userinfo";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/userinfo";
 const logoutEndpoint =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/logout";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/logout";
 const jwksUri =
-  "http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs";
+  "http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs";
 
 // Если Keycloak изменит endpoint'ы или структуру → приложение сломается!
 // Если переключиться на другого провайдера (Auth0, Azure AD) → нужно переписать все endpoint'ы
@@ -235,7 +235,7 @@ const getDiscovery = (env: "dev" | "staging" | "prod") => {
   return useAutoDiscovery(`${keycloakUrl}/realms/${realm}`);
 };
 
-// dev: http://localhost:8080/realms/fusion-test
+// dev: http://localhost:8080/realms/expo-app-realm
 // staging: https://staging-auth.example.com/realms/fusion-staging
 // prod: https://auth.example.com/realms/fusion-prod
 // Все работают без изменения кода!
@@ -246,7 +246,7 @@ const getDiscovery = (env: "dev" | "staging" | "prod") => {
 ```typescript
 // Работает с любым OAuth 2.0/OIDC провайдером
 const keycloakDiscovery = useAutoDiscovery(
-  "http://localhost:8080/realms/fusion-test"
+  "http://localhost:8080/realms/expo-app-realm"
 );
 
 const auth0Discovery = useAutoDiscovery("https://your-tenant.auth0.com");
@@ -296,7 +296,7 @@ interface DiscoveryMetadata {
 ```typescript
 // Discovery предоставляет JWKS URI для валидации токенов
 const jwksUri = discovery.jwksUri;
-// http://localhost:8080/realms/fusion-test/protocol/openid-connect/certs
+// http://localhost:8080/realms/expo-app-realm/protocol/openid-connect/certs
 
 // Использовать это для валидации подписи токена
 const publicKeys = await fetchJWKS(jwksUri);
@@ -332,7 +332,7 @@ if (!supportedAlgorithms.includes(tokenHeader.alg)) {
 export const envConfig = {
   dev: {
     keycloakURL: "http://localhost:8080",
-    realm: "fusion-test",
+    realm: "expo-app-realm",
     clientId: "fusion-mobile-dev"
   },
   staging: {
@@ -397,7 +397,7 @@ export const useDiscovery = () => {
 ```typescript
 // Dev
 const devDiscovery = useAutoDiscovery(
-  "http://localhost:8080/realms/fusion-test"
+  "http://localhost:8080/realms/expo-app-realm"
 );
 
 // Staging
@@ -521,7 +521,7 @@ useDiscoveryStore.getState().setDiscovery(discovery);
 Решение:
 const correctUrl = `${keycloakURL}/realms/${realm}`;
 // Проверить, что .well-known/openid-configuration доступен
-// curl http://localhost:8080/realms/fusion-test/.well-known/openid-configuration
+// curl http://localhost:8080/realms/expo-app-realm/.well-known/openid-configuration
 ```
 
 #### Проблема 2: CORS Ошибки

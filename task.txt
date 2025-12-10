@@ -1,3 +1,4 @@
+init
 1. Нужно интегрировать https://www.youtube.com/watch?v=WGcgiegv0W0&t=27s в данное мобильное приложения #codebase.
 2. Должные быть соблюдены все описанные oauth-discovery-document.md, automatic-token-refresh, presentation.txt (3-9) требования
 3. Создай план перед тем как выполнять задачу, нужно выполнять ее по todo steps

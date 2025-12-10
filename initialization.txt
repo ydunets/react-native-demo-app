@@ -1,0 +1,4 @@
+npx expo install expo-auth-session expo-crypto
+npm install react-native-mmkv react-native-nitro-modules
+npm install zustand
+curl http://localhost:8080/realms/expo-app-realm/.well-known/openid-configuration | jq .

@@ -100,7 +100,7 @@ Keycloak может изменить endpoints - приложение подст
 Итог: Discovery автоматизирует настройку OAuth клиента, делая приложение более гибким и соответствующим стандартам.
 
 ??? Не обязательно
-Issuer - Идентификатор OAuth провайдера http://localhost:8080/realms/fusion-test
+Issuer - Идентификатор OAuth провайдера http://localhost:8080/realms/expo-app-realm
 authorization_endpoint - Куда отправить пользователя для логина /protocol/openid-connect/auth
 token_endpoint - Обменять код на токены/protocol/openid-connect/token
 userinfo_endpoint - Получить информацию о профиле/protocol/openid-connect/userinfo

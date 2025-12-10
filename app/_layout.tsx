@@ -10,6 +10,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/lib/useColorScheme';
 import { NAV_THEME } from '@/theme';
+import { AuthProvider } from '@/contexts/auth';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+
+const queryClient = new QueryClient()
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -28,19 +32,24 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ActionSheetProvider>
           <NavThemeProvider value={NAV_THEME[colorScheme]}>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}>
-              {/* Root Index - Entry Point */}
-              <Stack.Screen name="index" options={{ headerShown: false }} />
+            <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              >
+                {/* Root Index - Entry Point */}
+                <Stack.Screen name="index" options={{ headerShown: false }} />
 
-              {/* Auth Stack */}
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                {/* Auth Stack */}
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
-              {/* Main Stack with Tabs */}
-              <Stack.Screen name="(main)" options={{ headerShown: false }} />
-            </Stack>
+                {/* Main Stack with Tabs */}
+                <Stack.Screen name="(main)" options={{ headerShown: false }} />
+              </Stack>
+            </AuthProvider>
+            </QueryClientProvider>
           </NavThemeProvider>
         </ActionSheetProvider>
       </GestureHandlerRootView>
