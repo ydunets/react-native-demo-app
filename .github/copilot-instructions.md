@@ -275,4 +275,4 @@ for monitoring app state changes"
 
 ---
 
-**Reference Documentation:** `technical/en/copilot-optimization.md` and `technical/ru/copilot-optimization.md`
+**Reference Documentation:** `documents/en/copilot-optimization.md` and `documents/ru/copilot-optimization.md`
