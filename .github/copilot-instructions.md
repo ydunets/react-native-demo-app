@@ -1,63 +1,46 @@
-# Copilot Instructions: Request Optimization
+# Expo App Presentation
 
-## Overview
+Modern, cross-platform mobile app using React Native (Expo) with a focus on modularity, theming, and robust authentication.
 
-These instructions help optimize premium request usage when working with Copilot Chat and Copilot CLI. Follow these guidelines to reduce costs while maintaining productivity.
+## Tech Stack
+- **React Native (Expo)**: 54.x
+- **TypeScript**: 5.9+ (strict mode)
+- **Expo Router**: 6.x (file-based navigation)
+- **NativeWind**: Tailwind CSS for React Native
+- **Zustand**: 4.5+ (state management)
+- **React Query**: 5.x (server state)
+- **Keycloak OAuth**: Authentication via `expo-auth-session`
+- **Axios**: API client with interceptors
+- **MMKV**: Encrypted local storage
 
-## Core Optimization Principles
+## Architecture
+- **Feature-based structure**: Screens in `app/`, reusable UI in `components/nativewindui/`, state in `store/`
+- **Expo Router**: Route groups (`(auth)`, `(main)`) with centralized paths in `router-map/routes.tsx`
+- **Providers**: Root layout (`app/_layout.tsx`) wraps app in Safe Area, Gesture Handler, Action Sheet, Theme, Query, and Auth providers
+- **Component Pattern**: UI components use `class-variance-authority` (CVA) and accept `className` for styling
+- **Theming**: `useColorScheme` hook manages light/dark modes; colors defined in `theme/colors.ts`
 
-### 1. Context Management
+## Conventions
+- **Styling**: Use NativeWind utility classes; avoid hard-coded colors (use `COLORS` or Tailwind tokens)
+- **Dark Mode**: Use `dark:` prefix for dark mode specific styles
+- **Imports**: Use `@/*` alias for root-relative imports (e.g., `@/components/...`)
+- **Naming**: PascalCase for components, camelCase for functions/hooks
+- **State**: Use `useStore()` for global state (persisted via MMKV); React Query for async data
+- **Navigation**: Use `href` with `RoutePaths` enum for type-safe linking
+- **API**: Use `createControllerPaths` helper for endpoint organization
 
-**ALWAYS prefer `#codebase` search over multiple individual file reads:**
+## Development Workflow
+- **Start**: `npm start` (runs Expo CLI)
+- **Run**: `npm run ios` or `npm run android`
+- **Lint/Format**: `npm run format` (ESLint + Prettier)
+- **New Screen**: Create in `app/`, add to `RoutePaths`, use `useColorScheme`
+- **New Component**: Create in `components/nativewindui/`, implement CVA pattern
 
-- Use `#codebase` for broad searches across the codebase
-- Only include specific files when absolutely necessary
-- Use symbol references (`#functionName`) instead of entire files when possible
-
-**Example:**
-
-```
-✅ "Explain authentication flow in #codebase"
-❌ "Explain file1.tsx" then "Explain file2.tsx" then "Explain file3.tsx"
-```
-
-### 2. Batch Related Questions
-
-**Group related questions into single requests:**
-
-- Combine multiple related tasks in one prompt
-- Include all requirements upfront (error handling, performance, security)
-- Avoid follow-up clarification requests when possible
-
-**Example:**
-
-```
-✅ "Review #auth.tsx for security vulnerabilities, performance issues, and code style consistency"
-❌ "Review #auth.tsx" → "What about security?" → "And performance?" → "Code style?"
-```
-
-### 3. Use Non-Premium Resources
-
-**Prefer @-mentions for simple tasks:**
-
-- Use `@vscode` for VS Code configuration questions
-- Use `@terminal` for command-line operations
-- Use `@workspace` for workspace-specific questions
-
-### 4. CLI Tools for Request Reduction
-
-**Use command-line tools to handle tasks that don't require AI assistance:**
-
-CLI tools can significantly reduce premium requests by handling file operations, code searching, and simple code generation without AI.
-
-#### Pre-filtering Context with CLI
-
-**Use CLI commands to narrow down files before including in context:**
-
-- Use `grep` or `ripgrep` (`rg`) to find code patterns before asking AI
-- Use `find` to locate files matching patterns before context inclusion
-- Use `git grep` to search within version-controlled files
-- Filter results to specific file types or directories
+## Common Pitfalls
+- **Hard-coded Colors**: Fails dark mode; always use theme tokens
+- **Direct API Calls**: Bypasses auth injection; always use `api/axios-client.tsx`
+- **Sensitive Data**: Do not use `AsyncStorage`; use `MMKV` for secure persistence
+- **Layout Bypass**: Ensure new screens are properly wrapped or nested in `_layout.tsx` context
 
 **Example workflow:**
 ```bash
@@ -106,7 +89,7 @@ gh copilot suggest "Create TypeScript interface for UserProfile"
 **Use CLI for file operations instead of asking AI:**
 
 - Use `find` to locate files by name or pattern
-- Use `grep`/`rg` to search code content
+- Use `grep` to search code content
 - Use `git` commands for code review and history
 - Use file system commands for organization
 
@@ -116,7 +99,7 @@ gh copilot suggest "Create TypeScript interface for UserProfile"
 find hooks -name "*.tsx" -type f
 
 # Search for error handling patterns
-rg "try.*catch" --type ts --type tsx
+grep "try.*catch" --include=\*.ts --include=\*.tsx
 
 # Review recent changes
 git log --oneline --since="1 week ago"
