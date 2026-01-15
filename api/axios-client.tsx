@@ -45,8 +45,6 @@ const createAxiosClient = (): AxiosInstance => {
   client.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-      const originalRequest = error.config;
-
       // Handle 401 Unauthorized - token expired or invalid
       if (error.response?.status === 401) {
         const { logout } = useAuthStore.getState();

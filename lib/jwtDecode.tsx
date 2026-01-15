@@ -15,8 +15,7 @@ function base64Decode(str: string): string {
         .join('')
     );
   } catch (error) {
-    // Fallback: direct atob
-    return atob(base64);
+    throw new Error('Invalid base64 string');
   }
 }
 

@@ -6,28 +6,39 @@ import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
 import { useAuthContext } from '@/contexts/auth';
+import { useAuthStore } from '@/store/authStore';
 
 export default function PatientScreen() {
-  const {logout} = useAuthContext();
+  const { logout } = useAuthContext();
+  const { user } = useAuthStore();
 
   const handleLogoutPress = async () => {
     await logout();
     // Don't need router.replace - the guard in (main)/_layout.tsx will handle it
   };
+
+  // Extract user info with fallbacks
+  const displayName = user?.name || user?.email || 'User';
+  const displayEmail = user?.email || 'No email available';
+  const initials = displayName
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 2) || 'U';
   
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
       <ScrollView className="flex-1">
       <View className="gap-4 p-4">
         <View className="items-center gap-2">
-          <Avatar alt='John Doe'>
+          <Avatar alt={displayName}>
             <AvatarFallback>
-              <Text>JD</Text>
+              <Text>{initials}</Text>
             </AvatarFallback>
           </Avatar>
-          <Text variant="title1">John Doe</Text>
+          <Text variant="title1">{displayName}</Text>
           <Text variant="subhead" color="tertiary">
-            john.doe@example.com
+            {displayEmail}
           </Text>
         </View>
 

@@ -66,12 +66,10 @@ interface AuthTokens {
 /**
  * User profile information
  */
-interface UserProfile {
+export interface UserProfile {
   id: string;
   email?: string;
   name?: string;
-  roles: string[];
-  decodedToken?: DecodedToken;
 }
 
 /**
@@ -112,14 +110,10 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (tokens: AuthTokens) => {
         try {
           const decoded = jwtDecode<DecodedToken>(tokens.accessToken);
-          const roles = decoded.realm_access?.roles || [];
-
           const user: UserProfile = {
             id: decoded.sub,
             email: decoded.email,
             name: decoded.name,
-            roles,
-            decodedToken: decoded,
           };
 
           set({
