@@ -9,6 +9,7 @@ enum RoutePaths {
     Chat = "/chat",
     SendMessage = "/send-message",
     MessageScreen = "/message/[id]",
+    Sitemap = "/_sitemap",
   }
 
 export default RoutePaths;

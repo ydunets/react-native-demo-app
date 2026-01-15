@@ -9,9 +9,7 @@ async function generateRandomHexString(length: number): Promise<string> {
   
   // Convert Base64 bytes to a hex string
   // You may need a polyfill for Buffer in Expo apps if you don't have one already
-  const hexString = Buffer.from(randomBytesBase64).toString('hex');
-
-  return hexString;
+  return Buffer.from(randomBytesBase64).toString('hex');
 }
 
 export function jwtDecode(token: string) {

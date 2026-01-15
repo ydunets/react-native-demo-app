@@ -1,8 +1,7 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/store/authStore';
 import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
 
 export default function MainLayout() {
   const { isLoggedIn } = useAuthStore();
@@ -14,7 +13,7 @@ export default function MainLayout() {
     if (!isLoggedIn) {
       router.replace('/(auth)/login');
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, router]);
 
   if (!isLoggedIn) {
     return null; // or a loading spinner
