@@ -28,11 +28,7 @@ declare global {
  * @middleware
  * @throws 401 if token is missing, invalid, or expired
  */
-export const authMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     // Extract Authorization header
     const authHeader = req.headers.authorization;
@@ -121,11 +117,7 @@ export const authMiddleware = (
  * Same as authMiddleware but doesn't fail if token is missing or invalid.
  * Sets req.user if token is valid, otherwise leaves it undefined.
  */
-export const optionalAuthMiddleware = (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void => {
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
 

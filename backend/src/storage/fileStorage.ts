@@ -1,5 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM compatibility for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '52428800', 10); // 50MB default
 const STORAGE_PATH = process.env.STORAGE_PATH || path.join(__dirname, '../../files');
@@ -30,7 +35,9 @@ export interface FileResponse {
  * @param contentLength Size in bytes
  * @returns { valid: boolean, error?: string }
  */
-export const validateContentLength = (contentLength: number): { valid: boolean; error?: string } => {
+export const validateContentLength = (
+  contentLength: number
+): { valid: boolean; error?: string } => {
   if (!Number.isInteger(contentLength) || contentLength <= 0) {
     return { valid: false, error: 'Invalid content length' };
   }

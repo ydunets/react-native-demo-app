@@ -66,9 +66,9 @@ export interface DownloadMessageAttachmentsProviderProps {
  * </DownloadMessageAttachmentsProvider>
  * ```
  */
-export const DownloadMessageAttachmentsProvider: React.FC<DownloadMessageAttachmentsProviderProps> = ({
-  children,
-}) => {
+export const DownloadMessageAttachmentsProvider: React.FC<
+  DownloadMessageAttachmentsProviderProps
+> = ({ children }) => {
   const store = useDownloadQueueStore();
   const queueRef = useRef<DownloadCommand[]>(store.queue);
   const isProcessingRef = useRef(false);
@@ -281,26 +281,20 @@ export const DownloadMessageAttachmentsProvider: React.FC<DownloadMessageAttachm
    * Download a file with priority (interrupts background queue)
    * Placeholder implementation - will be expanded in T031
    */
-  const downloadFilePriority = useCallback(
-    async (command: DownloadCommand): Promise<boolean> => {
-      try {
-        // TODO: Implement priority download logic in T031
-        // 1. Pause background processing
-        // 2. Download file via react-native-blob-util
-        // 3. Mark as completed
-        // 4. Resume background processing
-        console.warn(
-          '[DownloadContext] downloadFilePriority not yet implemented',
-          command.filename
-        );
-        return false;
-      } catch (error) {
-        console.error('[DownloadContext] Priority download failed:', error);
-        return false;
-      }
-    },
-    []
-  );
+  const downloadFilePriority = useCallback(async (command: DownloadCommand): Promise<boolean> => {
+    try {
+      // TODO: Implement priority download logic in T031
+      // 1. Pause background processing
+      // 2. Download file via react-native-blob-util
+      // 3. Mark as completed
+      // 4. Resume background processing
+      console.warn('[DownloadContext] downloadFilePriority not yet implemented', command.filename);
+      return false;
+    } catch (error) {
+      console.error('[DownloadContext] Priority download failed:', error);
+      return false;
+    }
+  }, []);
 
   // Initialize queue processing on provider mount
   useEffect(() => {

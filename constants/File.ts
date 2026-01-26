@@ -34,7 +34,7 @@ export const FILE_TYPES = {
   PPT: 'application/vnd.ms-powerpoint',
   PPTX: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   TXT: 'text/plain',
-  
+
   // Images
   JPEG: 'image/jpeg',
   JPG: 'image/jpeg',
@@ -42,18 +42,18 @@ export const FILE_TYPES = {
   GIF: 'image/gif',
   WEBP: 'image/webp',
   SVG: 'image/svg+xml',
-  
+
   // Videos
   MP4: 'video/mp4',
   MOV: 'video/quicktime',
   AVI: 'video/x-msvideo',
   WEBM: 'video/webm',
-  
+
   // Audio
   MP3: 'audio/mpeg',
   WAV: 'audio/wav',
   OGG: 'audio/ogg',
-  
+
   // Archives
   ZIP: 'application/zip',
   RAR: 'application/x-rar-compressed',
@@ -75,7 +75,7 @@ export const EXTENSION_TO_MIME: Record<string, string> = {
   ppt: FILE_TYPES.PPT,
   pptx: FILE_TYPES.PPTX,
   txt: FILE_TYPES.TXT,
-  
+
   // Images
   jpeg: FILE_TYPES.JPEG,
   jpg: FILE_TYPES.JPG,
@@ -83,18 +83,18 @@ export const EXTENSION_TO_MIME: Record<string, string> = {
   gif: FILE_TYPES.GIF,
   webp: FILE_TYPES.WEBP,
   svg: FILE_TYPES.SVG,
-  
+
   // Videos
   mp4: FILE_TYPES.MP4,
   mov: FILE_TYPES.MOV,
   avi: FILE_TYPES.AVI,
   webm: FILE_TYPES.WEBM,
-  
+
   // Audio
   mp3: FILE_TYPES.MP3,
   wav: FILE_TYPES.WAV,
   ogg: FILE_TYPES.OGG,
-  
+
   // Archives
   zip: FILE_TYPES.ZIP,
   rar: FILE_TYPES.RAR,

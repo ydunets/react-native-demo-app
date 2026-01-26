@@ -17,7 +17,8 @@ import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachm
 import { useRecentMessageAttachments } from '@/hooks/useRecentMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
-const queryClient = new QueryClient()
+// Create QueryClient once outside of component to prevent recreation on re-renders
+const queryClient = new QueryClient();
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -27,15 +28,30 @@ export {
 export default function RootLayout() {
   const { colorScheme, isDarkColorScheme } = useColorScheme();
 
-  return <RootLayoutContent colorScheme={colorScheme} isDarkColorScheme={isDarkColorScheme} />;
+  return (
+    <SafeAreaProvider>
+      <StatusBar
+        key={`root-status-bar-${isDarkColorScheme ? 'light' : 'dark'}`}
+        style={isDarkColorScheme ? 'light' : 'dark'}
+      />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ActionSheetProvider>
+          <NavThemeProvider value={NAV_THEME[colorScheme]}>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <DownloadMessageAttachmentsProvider>
+                  <RootLayoutContent />
+                </DownloadMessageAttachmentsProvider>
+              </AuthProvider>
+            </QueryClientProvider>
+          </NavThemeProvider>
+        </ActionSheetProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
+  );
 }
 
-interface RootLayoutContentProps {
-  colorScheme: 'light' | 'dark';
-  isDarkColorScheme: boolean;
-}
-
-function RootLayoutContent({ colorScheme, isDarkColorScheme }: RootLayoutContentProps) {
+function RootLayoutContent() {
   const { attachments, isLoading: isLoadingAttachments } = useRecentMessageAttachments({
     enabled: true,
   });
@@ -50,37 +66,18 @@ function RootLayoutContent({ colorScheme, isDarkColorScheme }: RootLayoutContent
   }, [attachments, isLoadingAttachments, addFilesToProcessingQueue, startProcessing]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar
-        key={`root-status-bar-${isDarkColorScheme ? 'light' : 'dark'}`}
-        style={isDarkColorScheme ? 'light' : 'dark'}
-      />
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ActionSheetProvider>
-          <NavThemeProvider value={NAV_THEME[colorScheme]}>
-            <QueryClientProvider client={queryClient}>
-              <AuthProvider>
-                <DownloadMessageAttachmentsProvider>
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                    }}
-                  >
-                    {/* Root Index - Entry Point */}
-                    <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}>
+      {/* Root Index - Entry Point */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
 
-                    {/* Auth Stack */}
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      {/* Auth Stack */}
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
-                    {/* Main Stack with Tabs */}
-                    <Stack.Screen name="(main)" options={{ headerShown: false }} />
-                  </Stack>
-                </DownloadMessageAttachmentsProvider>
-              </AuthProvider>
-            </QueryClientProvider>
-          </NavThemeProvider>
-        </ActionSheetProvider>
-      </GestureHandlerRootView>
-    </SafeAreaProvider>
+      {/* Main Stack with Tabs */}
+      <Stack.Screen name="(main)" options={{ headerShown: false }} />
+    </Stack>
   );
 }

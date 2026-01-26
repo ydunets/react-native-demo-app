@@ -2,7 +2,7 @@
 
 /**
  * Generate a test JWT token for backend API testing
- * 
+ *
  * Usage:
  *   node scripts/generate-test-token.js
  *   node scripts/generate-test-token.js --hours 1

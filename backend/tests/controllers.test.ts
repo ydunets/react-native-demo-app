@@ -59,13 +59,15 @@ describe('File Download API', () => {
     app.use('/api/files', authMiddleware, filesRouter);
 
     // Error handler
-    app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      const statusCode = err.statusCode || 500;
-      res.status(statusCode).json({
-        error: err.message || 'Internal Server Error',
-        statusCode,
-      });
-    });
+    app.use(
+      (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        const statusCode = err.statusCode || 500;
+        res.status(statusCode).json({
+          error: err.message || 'Internal Server Error',
+          statusCode,
+        });
+      }
+    );
   });
 
   describe('POST /api/files/download', () => {
@@ -85,9 +87,7 @@ describe('File Download API', () => {
     });
 
     it('should return 401 when Authorization header is missing', async () => {
-      const response = await request(app)
-        .post('/api/files/download')
-        .send({ filename: TEST_FILE });
+      const response = await request(app).post('/api/files/download').send({ filename: TEST_FILE });
 
       expect(response.status).toBe(401);
       expect(response.body.error).toBe('Unauthorized');
@@ -180,9 +180,7 @@ describe('File Download API', () => {
         .set('Authorization', `Bearer ${VALID_TOKEN}`)
         .send({ filename: TEST_FILE });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Download')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[Download'));
 
       consoleSpy.mockRestore();
     });
@@ -202,8 +200,7 @@ describe('File Download API', () => {
     });
 
     it('should return 401 when Authorization header is missing', async () => {
-      const response = await request(app)
-        .get('/api/files/list');
+      const response = await request(app).get('/api/files/list');
 
       expect(response.status).toBe(401);
       expect(response.body.error).toBe('Unauthorized');
@@ -258,8 +255,7 @@ describe('File Download API', () => {
 
   describe('Server Health', () => {
     it('should respond to health check without authentication', async () => {
-      const response = await request(app)
-        .get('/health');
+      const response = await request(app).get('/health');
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('ok');

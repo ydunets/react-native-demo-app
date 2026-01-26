@@ -6,11 +6,7 @@ const config: Config = {
   roots: ['<rootDir>/tests', '<rootDir>/src'],
   testMatch: ['**/tests/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/index.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/index.ts'],
   coverageDirectory: 'coverage',
   verbose: true,
 };

@@ -62,7 +62,11 @@ describe('Authentication Middleware', () => {
 
     it('should call next() on successful authentication', () => {
       const validToken = jwt.sign(
-        { sub: 'test-user', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 },
+        {
+          sub: 'test-user',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
         TEST_SECRET
       );
 
@@ -172,7 +176,11 @@ describe('Authentication Middleware', () => {
 
     it('should return 401 for token with wrong signature', () => {
       const validToken = jwt.sign(
-        { sub: 'user', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 },
+        {
+          sub: 'user',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
         'different-secret-key'
       );
 
@@ -330,7 +338,11 @@ describe('Authentication Middleware', () => {
       delete process.env.KEYCLOAK_PUBLIC_KEY;
 
       const token = jwt.sign(
-        { sub: 'user', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 },
+        {
+          sub: 'user',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
         TEST_SECRET
       );
 
@@ -354,7 +366,11 @@ describe('Authentication Middleware', () => {
   describe('HTTP Methods', () => {
     it('should work with any HTTP method (middleware agnostic)', () => {
       const token = jwt.sign(
-        { sub: 'user', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 },
+        {
+          sub: 'user',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
         TEST_SECRET
       );
 
@@ -369,7 +385,11 @@ describe('Authentication Middleware', () => {
   describe('Case Sensitivity', () => {
     it('should handle case-insensitive Authorization header', () => {
       const token = jwt.sign(
-        { sub: 'user', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 },
+        {
+          sub: 'user',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
         TEST_SECRET
       );
 

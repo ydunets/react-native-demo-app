@@ -1,7 +1,7 @@
-import { View, FlatList, Pressable } from "react-native";
+import { View, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
@@ -64,21 +64,21 @@ function ChatItem({ chat, onPress }: ChatItemProps) {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - chat.lastMessageTime.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
-      return chat.lastMessageTime.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return chat.lastMessageTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true,
       });
     } else if (diffDays === 1) {
       return 'Yesterday';
     } else if (diffDays < 7) {
       return chat.lastMessageTime.toLocaleDateString('en-US', { weekday: 'short' });
     } else {
-      return chat.lastMessageTime.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
+      return chat.lastMessageTime.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
       });
     }
   }, [chat.lastMessageTime]);
@@ -86,17 +86,15 @@ function ChatItem({ chat, onPress }: ChatItemProps) {
   return (
     <Pressable
       onPress={() => onPress(chat.id)}
-      className="flex-row items-center gap-3 p-4 border-b border-border active:opacity-70 bg-white">
+      className="flex-row items-center gap-3 border-b border-border bg-white p-4 active:opacity-70">
       <Avatar alt={chat.name}>
         <AvatarFallback>
           <Text className="text-sm">{chat.name.charAt(0)}</Text>
         </AvatarFallback>
       </Avatar>
       <View className="flex-1">
-        <View className="flex-row items-center justify-between mb-1">
-          <Text 
-            variant="heading" 
-            className={chat.unread > 0 ? 'font-semibold' : ''}>
+        <View className="mb-1 flex-row items-center justify-between">
+          <Text variant="heading" className={chat.unread > 0 ? 'font-semibold' : ''}>
             {chat.name}
           </Text>
           <Text variant="caption2" color="tertiary">
@@ -104,16 +102,16 @@ function ChatItem({ chat, onPress }: ChatItemProps) {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text 
-            variant="body" 
+          <Text
+            variant="body"
             color="tertiary"
             numberOfLines={1}
             className={chat.unread > 0 ? 'font-medium' : ''}>
             {chat.lastMessage}
           </Text>
           {chat.unread > 0 && (
-            <View className="rounded-full bg-primary px-2 py-0.5 min-w-[20] items-center justify-center">
-              <Text className="text-xs text-white font-semibold">
+            <View className="min-w-[20] items-center justify-center rounded-full bg-primary px-2 py-0.5">
+              <Text className="text-xs font-semibold text-white">
                 {chat.unread > 99 ? '99+' : chat.unread}
               </Text>
             </View>
@@ -168,11 +166,11 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="flex-1">
-        <View className="p-4 border-b border-border flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between border-b border-border p-4">
           <Text variant="title2">Conversations</Text>
           <Pressable
             onPress={handleNewChat}
-            className="p-2 rounded-full bg-primary active:opacity-70">
+            className="rounded-full bg-primary p-2 active:opacity-70">
             <Icon name="plus" size={20} className="text-white" />
           </Pressable>
         </View>
@@ -181,4 +179,3 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
-

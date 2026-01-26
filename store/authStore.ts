@@ -81,7 +81,7 @@ interface AuthState {
   user: UserProfile | null;
   isLoggedIn: boolean;
   isHydrated: boolean;
-  
+
   // Actions
   setTokens: (tokens: AuthTokens) => void;
   setUser: (user: UserProfile) => void;
@@ -164,7 +164,6 @@ export const useAuthStore = create<AuthState>()(
        */
       logoutFromKeycloak: async () => {
         try {
-          
           await logoutFromKeycloak();
 
           set({

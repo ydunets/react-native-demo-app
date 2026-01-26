@@ -33,7 +33,7 @@ const GCTIME = ACCESS_TOKEN_LIFESPAN ** 2;
 /**
  * Custom hook for automatic token refresh
  * Respects app state (foreground/background) and network connectivity
- * 
+ *
  * @returns Refresh token status and utilities
  */
 
@@ -51,7 +51,7 @@ const useNetInfo = () => {
   }, []);
 
   return { isConnected };
-}
+};
 
 const useAppState = () => {
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
@@ -59,14 +59,13 @@ const useAppState = () => {
 
   const isAppStateBackground = (state: AppStateStatus): boolean => {
     return state === 'background' || state === 'inactive';
-  }
-
+  };
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       setAppState(nextAppState);
 
-      if(isAppStateBackground(appState) && !isAppStateBackground(nextAppState)) {
+      if (isAppStateBackground(appState) && !isAppStateBackground(nextAppState)) {
         setHasAppBeenInBackground(true);
       }
     });
@@ -82,13 +81,16 @@ const useAppState = () => {
     setAppState,
     setHasAppBeenInBackground,
   };
-}
-
+};
 
 export const useRefreshTokens = (): RefreshTokenResult => {
-  const {updateTokens, tokens} = useAuthStore();
+  const { updateTokens, tokens } = useAuthStore();
   const { isConnected } = useNetInfo();
-  const { appState, hasAppBeenInBackground: returnedFromBackground, setHasAppBeenInBackground } = useAppState();
+  const {
+    appState,
+    hasAppBeenInBackground: returnedFromBackground,
+    setHasAppBeenInBackground,
+  } = useAppState();
 
   /**
    * Check if app state is in background
@@ -123,10 +125,8 @@ export const useRefreshTokens = (): RefreshTokenResult => {
   };
 
   const isAppStateBg = isAppStateBackground(appState);
-  const isRefreshEnabled = !!tokens?.refreshToken
-    && isConnected
-    && (!isAppStateBg || returnedFromBackground);
-    
+  const isRefreshEnabled =
+    !!tokens?.refreshToken && isConnected && (!isAppStateBg || returnedFromBackground);
 
   /**
    * React Query hook for token refresh

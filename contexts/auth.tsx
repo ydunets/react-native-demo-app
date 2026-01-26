@@ -38,7 +38,7 @@ interface AuthProviderProps {
 /**
  * Authentication Provider Component
  * Initializes OAuth discovery and manages app-wide auth state
- * 
+ *
  * @param children - Child components
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -50,9 +50,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthRequestLoading, setIsAuthRequestLoading] = React.useState(false);
   const { nonce, validateNonce } = useNonce(32);
 
-  console.log("Discovery Document Authorization Endpoint:", discovery?.authorizationEndpoint);
-  
- /**
+  console.log('Discovery Document Authorization Endpoint:', discovery?.authorizationEndpoint);
+
+  /**
    * Handle Keycloak OAuth login
    */
   const handleKeycloakLogin = async () => {
@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Create auth request
       const redirectUri = AuthSession.makeRedirectUri({ path: 'oauth2callback' });
-      
+
       const request = new AuthSession.AuthRequest({
         clientId: envConfig.clientId,
         redirectUri: redirectUri,
@@ -83,42 +83,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (result.type === 'success' && result.params.code) {
         // Exchange authorization code for tokens
-        const tokenResponse = await AuthSession.exchangeCodeAsync({
-          code: result.params.code,
-          clientId: envConfig.clientId,
-          redirectUri: redirectUri,
-          extraParams: {
-            code_verifier: request.codeVerifier || '',
+        const tokenResponse = await AuthSession.exchangeCodeAsync(
+          {
+            code: result.params.code,
+            clientId: envConfig.clientId,
+            redirectUri: redirectUri,
+            extraParams: {
+              code_verifier: request.codeVerifier || '',
+            },
           },
-        }, discovery);
+          discovery
+        );
 
         const nonceValid = validateNonce(tokenResponse.idToken || '');
 
-        console.log("Is nonce valid?", nonceValid.toString());
-        
+        console.log('Is nonce valid?', nonceValid.toString());
 
         if (nonceValid && tokenResponse.idToken) {
           // Decode ID token to extract user information
           try {
             const decodedToken = jwtDecode(tokenResponse.idToken);
-            console.log("Decoded ID Token:", decodedToken);
-            
+            console.log('Decoded ID Token:', decodedToken);
+
             // Extract user profile from token
             const userProfile: UserProfile = {
               id: decodedToken.sub || '',
               email: decodedToken.email || decodedToken.preferred_username || '',
-              name: decodedToken.name || decodedToken.given_name + ' ' + decodedToken.family_name || decodedToken.preferred_username || '',
+              name:
+                decodedToken.name ||
+                decodedToken.given_name + ' ' + decodedToken.family_name ||
+                decodedToken.preferred_username ||
+                '',
             };
-            
-            console.log("User Profile:", userProfile);
-            
+
+            console.log('User Profile:', userProfile);
+
             // Store tokens and user info
             setTokens({
               accessToken: tokenResponse.accessToken,
               refreshToken: tokenResponse.refreshToken || '',
               idToken: tokenResponse.idToken,
             });
-            
+
             setUser(userProfile);
           } catch (decodeError) {
             console.error('Error decoding ID token:', decodeError);
@@ -144,10 +150,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = async () => {
     try {
       console.log('Starting logout...');
-      
+
       // Call Keycloak logout - this invalidates server session
       await logoutFromKeycloak();
-      
+
       console.log('✅ User logged out successfully');
     } catch (error) {
       console.error('❌ Error during logout:', error);
@@ -171,11 +177,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login: handleKeycloakLogin,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 /**
@@ -184,7 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
  */
 export const useAuthContext = (): AuthContextValue => {
   const context = React.useContext(AuthContext);
-  
+
   if (!context) {
     throw new Error('useAuthContext must be used within an AuthProvider');
   }

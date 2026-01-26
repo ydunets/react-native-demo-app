@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import axiosClient from '@/api/axios-client';
+import { axiosClient } from '@/api/axios-client';
 import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
 import { MAX_FILE_SIZE } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
@@ -66,7 +66,7 @@ const defaultFetcher = async (): Promise<AttachmentInput[]> => {
   });
 
   const rawAttachments: MessageApiAttachment[] = Array.isArray(data?.attachments)
-    ? data?.attachments ?? []
+    ? (data?.attachments ?? [])
     : (data?.messages ?? []).flatMap((message) => {
         const attachments = message.attachments ?? [];
         return attachments.map((att) => ({ ...att, messageId: att.messageId ?? message.id }));
@@ -78,9 +78,7 @@ const defaultFetcher = async (): Promise<AttachmentInput[]> => {
     .slice(0, DEFAULT_LIMIT);
 };
 
-export const useRecentMessageAttachments = (
-  options?: UseRecentMessageAttachmentsOptions
-) => {
+export const useRecentMessageAttachments = (options?: UseRecentMessageAttachmentsOptions) => {
   const fetcher = useMemo(() => options?.fetcher ?? defaultFetcher, [options?.fetcher]);
   const enabled = options?.enabled ?? true;
   const [attachments, setAttachments] = useState<AttachmentInput[]>([]);

@@ -218,8 +218,8 @@ describe('File Storage Module', () => {
     it('should include sample test files', () => {
       const files = listStorageFiles();
       // Check that at least one of the sample files exists
-      const hasSampleFiles = files.some((f) => 
-        f.includes('sample') || f === 'sample-text.txt' || f === 'sample-data.json'
+      const hasSampleFiles = files.some(
+        (f) => f.includes('sample') || f === 'sample-text.txt' || f === 'sample-data.json'
       );
       expect(hasSampleFiles).toBe(true);
     });
@@ -260,7 +260,7 @@ describe('File Storage Module', () => {
       try {
         const response = await readFileFromStorage('sample-text.txt');
         expect(response.filename).toBe('sample-text.txt');
-      } catch (error) {
+      } catch {
         // File may not exist, but function should not throw on special chars
       }
     });

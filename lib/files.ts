@@ -40,7 +40,7 @@ export const getFileExtension = (filename: string): string => {
 export const makeCacheDirectory = async (): Promise<boolean> => {
   try {
     const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
-    
+
     // Check if directory exists by trying to list it
     try {
       cacheDir.list();
@@ -112,10 +112,10 @@ export const hasEnoughStorageSpace = async (requiredSizeBytes: number): Promise<
   try {
     // Get available disk space using new API
     const availableSpace = Paths.availableDiskSpace;
-    
+
     // Require at least the file size + 10% buffer for filesystem overhead
     const requiredWithBuffer = requiredSizeBytes * 1.1;
-    
+
     return availableSpace > requiredWithBuffer;
   } catch (error) {
     console.warn('[FileUtils] Error checking storage space:', error);
@@ -168,7 +168,7 @@ export const deleteCachedFile = async (
   try {
     const filePath = getCacheFilePath(attachmentId, filename);
     const file = new File(filePath);
-    
+
     // Check if file exists before deleting
     if (file.exists) {
       await file.delete();
@@ -198,7 +198,7 @@ export const getCachedFileSize = async (
   try {
     const filePath = getCacheFilePath(attachmentId, filename);
     const file = new File(filePath);
-    
+
     if (file.exists && file.size) {
       return file.size;
     }
@@ -219,7 +219,7 @@ export const getCachedFileSize = async (
 export const clearAttachmentsCache = async (): Promise<boolean> => {
   try {
     const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
-    
+
     try {
       // List and delete all files in directory
       const items = cacheDir.list();
