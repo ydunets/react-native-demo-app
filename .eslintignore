@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+.expo/
+.expo-shared/
+.vscode/
+.idea/
+.DS_Store
+*.log
+*.tmp
+*.cache
+.specify/
+backend/node_modules/
+backend/dist/
+ios/
+android/

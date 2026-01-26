@@ -1,4 +1,5 @@
 import '@/global.css';
+import { useEffect } from 'react';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
@@ -12,6 +13,8 @@ import { useColorScheme } from '@/lib/useColorScheme';
 import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
 import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
+import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachments';
+import { useRecentMessageAttachments } from '@/hooks/useRecentMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
 const queryClient = new QueryClient()
@@ -23,6 +26,28 @@ export {
 
 export default function RootLayout() {
   const { colorScheme, isDarkColorScheme } = useColorScheme();
+
+  return <RootLayoutContent colorScheme={colorScheme} isDarkColorScheme={isDarkColorScheme} />;
+}
+
+interface RootLayoutContentProps {
+  colorScheme: 'light' | 'dark';
+  isDarkColorScheme: boolean;
+}
+
+function RootLayoutContent({ colorScheme, isDarkColorScheme }: RootLayoutContentProps) {
+  const { attachments, isLoading: isLoadingAttachments } = useRecentMessageAttachments({
+    enabled: true,
+  });
+  const { addFilesToProcessingQueue, startProcessing } = useDownloadMessageAttachments();
+
+  // On app launch, queue recent message attachments for background download (T032)
+  useEffect(() => {
+    if (!isLoadingAttachments && attachments.length > 0) {
+      void addFilesToProcessingQueue(attachments);
+      startProcessing();
+    }
+  }, [attachments, isLoadingAttachments, addFilesToProcessingQueue, startProcessing]);
 
   return (
     <SafeAreaProvider>

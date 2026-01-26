@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+.expo/
+.expo-shared/
+.vscode/
+.idea/
+.DS_Store
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+backend/node_modules/
+backend/dist/
+ios/
+android/

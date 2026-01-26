@@ -119,7 +119,7 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Context Implementation
 
-- [ ] T024 Implement DownloadMessageAttachmentsContext: `contexts/downloadMessageAttachments.tsx` with:
+- [X] T024 Implement DownloadMessageAttachmentsContext: `contexts/downloadMessageAttachments.tsx` with:
   - **State**: Queue management via useDownloadQueueStore
   - **Methods**: 
     - `addFilesToProcessingQueue(attachments: Attachment[])`: Add files with validation (50MB limit, deduplication)
@@ -168,23 +168,23 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Implementation Tasks
 
-- [ ] T027 [P] [US1] Create hook to detect recent messages with attachments: `hooks/useRecentMessageAttachments.tsx`
+- [X] T027 [P] [US1] Create hook to detect recent messages with attachments: `hooks/useRecentMessageAttachments.tsx`
   - Depends on Messages API hook (likely existing `useMessages` or similar from React Query)
   - Returns attachments from last 50 messages
   - Filters out already-downloaded files (check cache)
 
-- [ ] T028 [P] [US1] Create network status integration: Update `hooks/useDownloadMessageAttachments.tsx` to:
+- [X] T028 [P] [US1] Create network status integration: Update `hooks/useDownloadMessageAttachments.tsx` to:
   - Subscribe to `useCheckNetworkStatus()` hook (isConnected state)
   - On connection restored: Trigger `startProcessing()`
   - On connection lost: Trigger `pauseProcessing()`
 
-- [ ] T029 [P] [US1] Create app state integration: Update `hooks/useDownloadMessageAttachments.tsx` to:
+- [X] T029 [P] [US1] Create app state integration: Update `hooks/useDownloadMessageAttachments.tsx` to:
   - Subscribe to `useAppStateStore()` app state changes
   - On foreground: Resume processing if paused
   - On background: Pause processing to save battery
   - Use existing `isAppStateActive()` utility
 
-- [ ] T030 [US1] Implement main queue processing loop: Update `contexts/downloadMessageAttachments.tsx` `processQueue()` function:
+- [X] T030 [US1] Implement main queue processing loop: Update `contexts/downloadMessageAttachments.tsx` `processQueue()` function:
   - FIFO processing of queue items
   - Pause flag support (Proxy-based) for responsive interruption
   - Download each file via `downloadFile()`
@@ -192,29 +192,29 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
   - Persist state to MMKV on each change
   - Error handling: Log errors, continue to next file
 
-- [ ] T031 [US1] Implement file download via react-native-blob-util: Update `contexts/downloadMessageAttachments.tsx` `downloadFile()` function:
+- [X] T031 [US1] Implement file download via react-native-blob-util: Update `contexts/downloadMessageAttachments.tsx` `downloadFile()` function:
   - Use `RNFetchBlob.fetch()` with POST method
   - Send file URL in request body
   - Include Bearer token in Authorization header (from authStore)
-  - Save response as Base64 to filesystem via `FileSystem.writeAsStringAsync()`
+  - Save response as Base64 using Expo FileSystem `File.write(..., { encoding: 'base64' })` (SDK 54 API)
   - Handle download errors gracefully (return false to continue queue)
   - Constitution: Centralized API (use authStore for token, getFileServerBaseURL for URL)
 
-- [ ] T032 [US1] Add startup hook to trigger background downloads: Update `app/_layout.tsx` to:
+- [X] T032 [US1] Add startup hook to trigger background downloads: Update `app/_layout.tsx` to:
   - On app launch, get recent attachments via `useRecentMessageAttachments()`
   - Add to queue via `addCommand()` from context
   - Automatically start processing if network connected
 
-- [ ] T033 [US1] Implement cache directory initialization: Update `lib/files.ts`:
-  - `makeCacheDirectory()` ensures `cacheDirectory/attachments/` exists before any downloads
+- [X] T033 [US1] Implement cache directory initialization: Update `lib/files.ts`:
+  - `makeCacheDirectory()` ensures cache directory exists using Expo FileSystem `Directory` API (SDK 54)
   - Called on first context usage in `processQueue()`
 
-- [ ] T034 [P] [US1] Add file size validation (client-side): Update `hooks/useRecentMessageAttachments.tsx` to:
+- [X] T034 [P] [US1] Add file size validation (client-side): Update `hooks/useRecentMessageAttachments.tsx` to:
   - Skip files exceeding 50MB (check attachment.fileSize property)
   - Log skipped files for monitoring
   - Never queue oversized files
 
-- [ ] T035 [P] [US1] Add dark mode support: Ensure any UI toast/notifications use theme tokens from `theme/colors.ts` (constitution: Theme-First Design)
+- [X] T035 [P] [US1] Add dark mode support: Ensure any UI toast/notifications use theme tokens from `theme/colors.ts` (constitution: Theme-First Design)
 
 ### Testing for User Story 1 (OPTIONAL - Tests marked optional per spec requirements)
 
