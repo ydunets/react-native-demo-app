@@ -101,7 +101,7 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Zustand Store with MMKV Persistence
 
-- [ ] T022 Create download queue store: `store/downloadQueueStore.ts` with:
+- [X] T022 Create download queue store: `store/downloadQueueStore.ts` with:
   - **State**: queue (DownloadCommand[]), isProcessing (boolean), completedIds (Set<string>), pausedDueToStorage (boolean), pausedDueToAuth (boolean)
   - **Actions**: addCommand, removeCommand, startProcessing, pauseProcessing, resumeProcessing, resetQueue, markCompleted
   - **Persistence**: MMKV via Zustand persist middleware (encrypted storage, constitution: Secure State Management)
@@ -110,7 +110,7 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### File Utilities Module
 
-- [ ] T023 Create file utilities: `lib/files.ts` with functions:
+- [X] T023 Create file utilities: `lib/files.ts` with functions:
   - `getFileExtension(filename: string)`: Extract extension from filename
   - `makeCacheDirectory()`: Ensure attachments cache directory exists (create if missing)
   - `getCacheFilePath(attachmentId: string, filename: string)`: Get full path for cached file
@@ -132,11 +132,11 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
   - **Error handling**: Graceful failure on individual files, continue queue processing
   - Constitution: Centralized API (all downloads go through context)
 
-- [ ] T025 Create useDownloadMessageAttachmentsContext hook: `hooks/useDownloadMessageAttachments.tsx` wrapper for context access with proper null checks and error boundaries
+- [X] T025 Create useDownloadMessageAttachmentsContext hook: `hooks/useDownloadMessageAttachments.tsx` wrapper for context access with proper null checks and error boundaries
 
 ### Environment Configuration
 
-- [ ] T026 Update environment config: `configs/env-config.ts` add `getFileServerBaseURL()` function:
+- [X] T026 Update environment config: `configs/env-config.ts` add `getFileServerBaseURL()` function:
   - iOS Simulator: `http://localhost:3001`
   - Android Emulator: `http://10.0.2.2:3001`
   - Production: Use `EXPO_PUBLIC_FILE_SERVER_URL` env var
