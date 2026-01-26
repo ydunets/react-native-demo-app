@@ -2,11 +2,12 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import path from 'path';
 import { authMiddleware } from './middleware/auth';
 import filesRouter from './routes/files';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from .env.backend
+dotenv.config({ path: path.resolve(__dirname, '../../.env.backend') });
 
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
