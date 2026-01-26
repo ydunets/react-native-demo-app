@@ -25,11 +25,11 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Setup Tasks
 
-- [ ] T001 Create feature branch: `git checkout -b 001-attachment-download-queue`
-- [ ] T002 Create backend directory structure: `backend/src/{routes,middleware,storage}`, `backend/files/`
-- [ ] T003 [P] Create frontend context directory: `contexts/`
-- [ ] T004 [P] Create frontend hooks directory: `hooks/`
-- [ ] T005 [P] Create frontend constants file: `constants/File.ts`
+- [X] T001 Create feature branch: `git checkout -b 001-attachment-download-queue`
+- [X] T002 Create backend directory structure: `backend/src/{routes,middleware,storage}`, `backend/files/`
+- [X] T003 [P] Create frontend context directory: `contexts/`
+- [X] T004 [P] Create frontend hooks directory: `hooks/`
+- [X] T005 [P] Create frontend constants file: `constants/File.ts`
 
 ### Foundational Architectural Tasks
 
