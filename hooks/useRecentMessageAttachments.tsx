@@ -143,7 +143,10 @@ export const useRecentMessageAttachments = (options?: UseRecentMessageAttachment
     };
 
     if (enabled) {
-      void filterAttachments();
+      filterAttachments().catch((error) => {
+        console.error('[useRecentMessageAttachments] filterAttachments failed:', error);
+        setIsFiltering(false);
+      });
     }
 
     return () => {

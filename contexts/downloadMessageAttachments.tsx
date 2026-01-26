@@ -247,6 +247,12 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     isProcessingRef.current = false;
   }, [downloadFile, store]);
 
+  const triggerProcessQueue = useCallback(() => {
+    processQueue().catch((error) => {
+      console.error('[DownloadContext] processQueue failed:', error);
+    });
+  }, [processQueue]);
+
   /**
    * Start processing the download queue
    */
@@ -254,8 +260,8 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     if (isProcessingRef.current) return;
     store.startProcessing();
     pauseFlagRef.current.isPaused = false;
-    void processQueue();
-  }, [processQueue, store]);
+    triggerProcessQueue();
+  }, [store, triggerProcessQueue]);
 
   /**
    * Pause processing the download queue
@@ -273,9 +279,9 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     pauseFlagRef.current.isPaused = false;
     store.resumeProcessing();
     if (!isProcessingRef.current) {
-      void processQueue();
+      triggerProcessQueue();
     }
-  }, [processQueue, store]);
+  }, [store, triggerProcessQueue]);
 
   /**
    * Download a file with priority (interrupts background queue)
@@ -303,12 +309,12 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
       if (store.queue.length > 0) {
         pauseFlagRef.current.isPaused = false;
-        void processQueue();
+        triggerProcessQueue();
       }
     };
 
     initializeQueue();
-  }, [processQueue, store]);
+  }, [store, triggerProcessQueue]);
 
   useEffect(() => {
     queueRef.current = store.queue;
