@@ -1,5 +1,5 @@
 import '@/global.css';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
@@ -56,14 +56,17 @@ function RootLayoutContent() {
     enabled: true,
   });
   const { addFilesToProcessingQueue, startProcessing } = useDownloadMessageAttachments();
+  const queuedRef = useRef(false);
 
   // On app launch, queue recent message attachments for background download (T032)
+  // Only queue once to prevent infinite loop
   useEffect(() => {
-    if (!isLoadingAttachments && attachments.length > 0) {
+    if (!isLoadingAttachments && attachments.length > 0 && !queuedRef.current) {
+      queuedRef.current = true;
       void addFilesToProcessingQueue(attachments);
       startProcessing();
     }
-  }, [attachments, isLoadingAttachments, addFilesToProcessingQueue, startProcessing]);
+  }, [isLoadingAttachments, attachments, addFilesToProcessingQueue, startProcessing]);
 
   return (
     <Stack

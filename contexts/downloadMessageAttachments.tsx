@@ -10,7 +10,7 @@
  * - Context provides high-level API: addCommand, startProcessing, pauseProcessing, resumeProcessing
  */
 
-import React, { createContext, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useCallback, useMemo, useRef, useEffect } from 'react';
 import RNFetchBlob from 'react-native-blob-util';
 import { File } from 'expo-file-system';
 
@@ -314,18 +314,33 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     queueRef.current = store.queue;
   }, [store.queue]);
 
-  const value: DownloadContextType = {
-    queue: store.queue,
-    isProcessing: store.isProcessing,
-    completedIds: store.getCompletedIdsAsSet(),
-    addCommand,
-    addFilesToProcessingQueue,
-    removeCommand,
-    startProcessing,
-    pauseProcessing,
-    resumeProcessing,
-    downloadFilePriority,
-  };
+  const value = useMemo<DownloadContextType>(
+    () => ({
+      queue: store.queue,
+      isProcessing: store.isProcessing,
+      completedIds: store.getCompletedIdsAsSet(),
+      addCommand,
+      addFilesToProcessingQueue,
+      removeCommand,
+      startProcessing,
+      pauseProcessing,
+      resumeProcessing,
+      downloadFilePriority,
+    }),
+    [
+      store.queue,
+      store.isProcessing,
+      // Note: store.getCompletedIdsAsSet() returns a new Set each time,
+      // so we don't include it in dependencies to prevent unnecessary memoization updates
+      addCommand,
+      addFilesToProcessingQueue,
+      removeCommand,
+      startProcessing,
+      pauseProcessing,
+      resumeProcessing,
+      downloadFilePriority,
+    ]
+  );
 
   return (
     <DownloadMessageAttachmentsContext.Provider value={value}>

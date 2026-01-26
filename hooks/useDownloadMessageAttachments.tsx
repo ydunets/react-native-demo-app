@@ -56,10 +56,11 @@ export const useDownloadMessageAttachments = (
     const unsubscribe = NetInfo.addEventListener((state) => {
       const isConnected = state.isConnected ?? false;
 
-      if (isConnected) {
+      // Only update if not already in the desired state
+      if (isConnected && !context.isProcessing) {
         context.resumeProcessing();
         context.startProcessing();
-      } else {
+      } else if (!isConnected && context.isProcessing) {
         context.pauseProcessing();
       }
     });
@@ -67,7 +68,7 @@ export const useDownloadMessageAttachments = (
     return () => {
       unsubscribe();
     };
-  }, [autoManageNetwork, context]);
+  }, [autoManageNetwork, context.isProcessing, context.pauseProcessing, context.resumeProcessing, context.startProcessing]);
 
   // Pause/resume based on app foreground/background
   useEffect(() => {
@@ -92,7 +93,7 @@ export const useDownloadMessageAttachments = (
     return () => {
       subscription.remove();
     };
-  }, [autoManageAppState, context]);
+  }, [autoManageAppState, context.pauseProcessing, context.resumeProcessing, context.startProcessing]);
 
   return context;
 };
