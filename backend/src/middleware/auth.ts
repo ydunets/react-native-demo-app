@@ -1,5 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+
+// Cache the public key after first read
+let cachedPublicKey: string | null = null;
+
+/**
+ * Reset the cached public key (useful for testing)
+ */
+export const resetPublicKeyCache = (): void => {
+  cachedPublicKey = null;
+};
+
+/**
+ * Get public key from environment or file
+ * Supports KEYCLOAK_PUBLIC_KEY (direct value) or KEYCLOAK_PUBLIC_KEY_FILE (file path)
+ */
+const getPublicKey = (): string | null => {
+  if (cachedPublicKey) return cachedPublicKey;
+
+  const keyFile = process.env.KEYCLOAK_PUBLIC_KEY_FILE;
+  if (keyFile) {
+    try {
+      cachedPublicKey = fs.readFileSync(keyFile, 'utf-8').trim();
+      return cachedPublicKey;
+    } catch (error) {
+      console.error('Failed to read KEYCLOAK_PUBLIC_KEY_FILE:', error);
+      return null;
+    }
+  }
+
+  cachedPublicKey = process.env.KEYCLOAK_PUBLIC_KEY || null;
+  return cachedPublicKey;
+};
 
 // Extend Express Request to include user data
 declare global {
@@ -45,10 +78,10 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
     const token = authHeader.slice(7); // Remove 'Bearer ' prefix
 
     // Get public key for verification
-    const publicKey = process.env.KEYCLOAK_PUBLIC_KEY;
+    const publicKey = getPublicKey();
 
     if (!publicKey) {
-      console.error('KEYCLOAK_PUBLIC_KEY not configured');
+      console.error('KEYCLOAK_PUBLIC_KEY or KEYCLOAK_PUBLIC_KEY_FILE not configured');
       res.status(500).json({
         error: 'Server Configuration Error',
         message: 'Auth verification not properly configured',
@@ -128,10 +161,10 @@ export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextF
     }
 
     const token = authHeader.slice(7);
-    const publicKey = process.env.KEYCLOAK_PUBLIC_KEY;
+    const publicKey = getPublicKey();
 
     if (!publicKey) {
-      console.warn('KEYCLOAK_PUBLIC_KEY not configured, skipping token verification');
+      console.warn('KEYCLOAK_PUBLIC_KEY or KEYCLOAK_PUBLIC_KEY_FILE not configured, skipping token verification');
       next();
       return;
     }

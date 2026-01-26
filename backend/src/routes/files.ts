@@ -1,10 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {
-  readFileFromStorage,
-  validateContentLength,
-  initializeStorage,
-  listStorageFiles,
-} from '../storage/fileStorage';
+import { readFileFromStorage, validateContentLength, initializeStorage, listStorageFiles } from '../storage/fileStorage';
 
 const router = Router();
 
@@ -74,9 +69,7 @@ router.post('/download', async (req: Request, res: Response) => {
       base64: fileResponse.base64,
     });
 
-    console.log(
-      `[Download Success] User: ${userId}, File: ${filename}, Size: ${fileResponse.size} bytes`
-    );
+    console.log(`[Download Success] User: ${userId}, File: ${filename}, Size: ${fileResponse.size} bytes`);
   } catch (error: any) {
     // Handle specific errors
     if (error.statusCode === 404) {

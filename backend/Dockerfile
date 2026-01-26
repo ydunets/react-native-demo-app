@@ -3,21 +3,25 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Copy package files (supports building from repo root context)
+COPY backend/package.json backend/package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install full dependencies for build (dev + prod)
+RUN npm ci
 
 # Copy source code
-COPY src ./src
-COPY tsconfig.json ./
+COPY backend/src ./src
+COPY backend/tsconfig.json ./
+COPY backend/tsconfig.build.json ./
 
 # Build TypeScript
 RUN npm run build
 
+# Prune to production dependencies for final image size
+RUN npm ci --only=production
+
 # Production image
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

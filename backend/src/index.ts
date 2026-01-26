@@ -3,13 +3,8 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { authMiddleware } from './middleware/auth';
-import filesRouter from './routes/files';
-
-// ESM compatibility for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { authMiddleware } from './middleware/auth.js';
+import filesRouter from './routes/files.js';
 
 // Load environment variables from .env.backend
 dotenv.config({ path: path.resolve(__dirname, '../../.env.backend') });

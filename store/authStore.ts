@@ -101,7 +101,7 @@ interface AuthState {
  */
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tokens: null,
       user: null,
       isLoggedIn: false,
@@ -164,7 +164,9 @@ export const useAuthStore = create<AuthState>()(
        */
       logoutFromKeycloak: async () => {
         try {
-          await logoutFromKeycloak();
+          const refreshToken = get().tokens?.refreshToken;
+          
+          await logoutFromKeycloak({ refreshToken });
 
           set({
             tokens: null,

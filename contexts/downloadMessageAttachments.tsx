@@ -106,6 +106,11 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     async (attachments: AttachmentInput[]) => {
       const completedSet = store.getCompletedIdsAsSet();
       const queuedIds = new Set(queueRef.current.map((item) => item.attachmentId));
+      let queuedCount = 0;
+      let skippedCompleted = 0;
+      let skippedCached = 0;
+      let skippedOversize = 0;
+      let skippedMissingUrl = 0;
 
       for (const attachment of attachments) {
         const attachmentId = attachment.id;
@@ -115,21 +120,25 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
         if (!fileUrl) {
           console.warn('[DownloadContext] Skipping attachment without fileUrl', attachmentId);
+          skippedMissingUrl += 1;
           continue;
         }
 
         if (!isFileSizeValid(sizeBytes)) {
           console.warn('[DownloadContext] Skipping oversized attachment', filename, sizeBytes);
+          skippedOversize += 1;
           continue;
         }
 
         if (completedSet.has(attachmentId) || queuedIds.has(attachmentId)) {
+          skippedCompleted += 1;
           continue;
         }
 
         const alreadyCached = await fileExistsInCache(attachmentId, filename);
         if (alreadyCached) {
           store.markCompleted(attachmentId);
+          skippedCached += 1;
           continue;
         }
 
@@ -145,7 +154,9 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
         store.addCommand(command);
         queuedIds.add(attachmentId);
+        queuedCount += 1;
       }
+
     },
     [store]
   );
@@ -183,9 +194,9 @@ export const DownloadMessageAttachmentsProvider: React.FC<
           `${envConfig.fileServerBaseURL}/api/files/download`,
           {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'text/plain',
+            'Content-Type': 'application/json',
           },
-          command.fileUrl
+          JSON.stringify({ filename: command.filename })
         );
 
         const status = response.info().status;

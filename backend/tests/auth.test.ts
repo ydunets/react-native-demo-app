@@ -1,4 +1,4 @@
-import { authMiddleware } from '../src/middleware/auth';
+import { authMiddleware, resetPublicKeyCache } from '../src/middleware/auth';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
@@ -13,6 +13,9 @@ describe('Authentication Middleware', () => {
   let mockNext: jest.Mock;
 
   beforeEach(() => {
+    // Reset the cached public key before each test
+    resetPublicKeyCache();
+    
     // Set environment variable for testing
     process.env.KEYCLOAK_PUBLIC_KEY = TEST_SECRET;
 
@@ -336,6 +339,8 @@ describe('Authentication Middleware', () => {
     it('should return 500 when KEYCLOAK_PUBLIC_KEY is not configured', () => {
       const originalKey = process.env.KEYCLOAK_PUBLIC_KEY;
       delete process.env.KEYCLOAK_PUBLIC_KEY;
+      // Reset cache after deleting env var to ensure it re-reads
+      resetPublicKeyCache();
 
       const token = jwt.sign(
         {

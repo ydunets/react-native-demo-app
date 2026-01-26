@@ -81,19 +81,15 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: file-server
+    env_file:
+      - .env.backend
     environment:
-      PORT: 3001
-      NODE_ENV: development
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
-      KEYCLOAK_PUBLIC_KEY: ${KEYCLOAK_PUBLIC_KEY:-}
-      CORS_ORIGINS: http://localhost:8081,http://10.0.2.2:8081
-      MAX_FILE_SIZE: 52428800
-      STORAGE_PATH: /app/files
-      LOG_LEVEL: debug
+      KEYCLOAK_PUBLIC_KEY_FILE: /app/keys/keycloak-public-key.pem
     ports:
       - "3001:3001"
     volumes:
       - ./backend/files:/app/files:ro
+      - ./backend/keycloak-public-key.pem:/app/keys/keycloak-public-key.pem:ro
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s

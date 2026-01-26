@@ -219,7 +219,7 @@ describe('File Storage Module', () => {
       const files = listStorageFiles();
       // Check that at least one of the sample files exists
       const hasSampleFiles = files.some(
-        (f) => f.includes('sample') || f === 'sample-text.txt' || f === 'sample-data.json'
+        (f: string) => f.includes('sample') || f === 'sample-text.txt' || f === 'sample-data.json'
       );
       expect(hasSampleFiles).toBe(true);
     });

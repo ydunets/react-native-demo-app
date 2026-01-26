@@ -6,20 +6,19 @@
 
 import * as AuthSession from 'expo-auth-session';
 import { envConfig } from '@/configs/env-config';
-import { useAuthStore } from '@/store/authStore';
 
 /**
  * Logout from Keycloak and invalidate session
  * Clears tokens, cookies, and calls Keycloak logout endpoint
  */
-export const logoutFromKeycloak = async (): Promise<void> => {
+export const logoutFromKeycloak = async (params?: { refreshToken?: string }): Promise<void> => {
   try {
     const { keycloakURL, realm, clientId } = envConfig;
-    const { tokens } = useAuthStore.getState();
+    const refreshToken = params?.refreshToken;
 
     // Step 1: Call Keycloak revocation endpoint with refresh token
     // This invalidates the refresh token server-side
-    if (tokens?.refreshToken) {
+    if (refreshToken) {
       try {
         const revokeUrl = `${keycloakURL}/realms/${realm}/protocol/openid-connect/revoke`;
         await fetch(revokeUrl, {
@@ -29,7 +28,7 @@ export const logoutFromKeycloak = async (): Promise<void> => {
           },
           body: new URLSearchParams({
             client_id: clientId,
-            token: tokens.refreshToken,
+            token: refreshToken,
           }).toString(),
         });
         console.log('✅ Refresh token revoked on Keycloak');

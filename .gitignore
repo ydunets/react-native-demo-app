@@ -29,3 +29,7 @@ docs
 .specify/
 .env
 .env.*.local
+.env.backend
+
+# Keycloak
+*.pem

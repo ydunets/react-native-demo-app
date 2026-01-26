@@ -61,21 +61,25 @@ const normalizeAttachment = (attachment: MessageApiAttachment): AttachmentInput 
 };
 
 const defaultFetcher = async (): Promise<AttachmentInput[]> => {
-  const { data } = await axiosClient.get<FetcherResponse>('/messages/recent', {
-    params: { limit: DEFAULT_LIMIT, includeAttachments: true },
-  });
+  try {
+    const { data } = await axiosClient.get<FetcherResponse>('/messages/recent', {
+      params: { limit: DEFAULT_LIMIT, includeAttachments: true },
+    });
 
-  const rawAttachments: MessageApiAttachment[] = Array.isArray(data?.attachments)
-    ? (data?.attachments ?? [])
-    : (data?.messages ?? []).flatMap((message) => {
-        const attachments = message.attachments ?? [];
-        return attachments.map((att) => ({ ...att, messageId: att.messageId ?? message.id }));
-      });
+    const rawAttachments: MessageApiAttachment[] = Array.isArray(data?.attachments)
+      ? (data?.attachments ?? [])
+      : (data?.messages ?? []).flatMap((message) => {
+          const attachments = message.attachments ?? [];
+          return attachments.map((att) => ({ ...att, messageId: att.messageId ?? message.id }));
+        });
 
-  return rawAttachments
-    .map(normalizeAttachment)
-    .filter((item): item is AttachmentInput => item !== null)
-    .slice(0, DEFAULT_LIMIT);
+    return rawAttachments
+      .map(normalizeAttachment)
+      .filter((item): item is AttachmentInput => item !== null)
+      .slice(0, DEFAULT_LIMIT);
+  } catch {
+    return [];
+  }
 };
 
 export const useRecentMessageAttachments = (options?: UseRecentMessageAttachmentsOptions) => {
@@ -143,8 +147,7 @@ export const useRecentMessageAttachments = (options?: UseRecentMessageAttachment
     };
 
     if (enabled) {
-      filterAttachments().catch((error) => {
-        console.error('[useRecentMessageAttachments] filterAttachments failed:', error);
+      filterAttachments().catch(() => {
         setIsFiltering(false);
       });
     }
