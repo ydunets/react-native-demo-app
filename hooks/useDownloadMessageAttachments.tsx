@@ -39,6 +39,7 @@ export const useDownloadMessageAttachments = (
   const context = useContext(DownloadMessageAttachmentsContext);
 
   const lastAppState = useRef<AppStateStatus>(AppState.currentState);
+  const lastNetworkConnected = useRef<boolean | null>(null);
   const autoManageNetwork = options?.autoManageNetwork ?? true;
   const autoManageAppState = options?.autoManageAppState ?? true;
 
@@ -50,17 +51,24 @@ export const useDownloadMessageAttachments = (
   }
 
   // Pause/resume based on network status
+  // Use ref to track last network state and avoid effect re-runs from state changes
   useEffect(() => {
     if (!autoManageNetwork) return;
 
     const unsubscribe = NetInfo.addEventListener((state) => {
       const isConnected = state.isConnected ?? false;
 
-      // Only update if not already in the desired state
-      if (isConnected && !context.isProcessing) {
+      // Only update if network state actually changed
+      if (lastNetworkConnected.current === isConnected) {
+        return;
+      }
+
+      lastNetworkConnected.current = isConnected;
+
+      if (isConnected) {
         context.resumeProcessing();
         context.startProcessing();
-      } else if (!isConnected && context.isProcessing) {
+      } else {
         context.pauseProcessing();
       }
     });
@@ -68,7 +76,7 @@ export const useDownloadMessageAttachments = (
     return () => {
       unsubscribe();
     };
-  }, [autoManageNetwork, context.isProcessing, context.pauseProcessing, context.resumeProcessing, context.startProcessing]);
+  }, [autoManageNetwork, context.pauseProcessing, context.resumeProcessing, context.startProcessing]);
 
   // Pause/resume based on app foreground/background
   useEffect(() => {

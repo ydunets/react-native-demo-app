@@ -55,18 +55,28 @@ function RootLayoutContent() {
   const { attachments, isLoading: isLoadingAttachments } = useRecentMessageAttachments({
     enabled: true,
   });
-  const { addFilesToProcessingQueue, startProcessing } = useDownloadMessageAttachments();
+  // Disable auto-management here since we explicitly manage queue startup
+  const { addFilesToProcessingQueue, startProcessing } = useDownloadMessageAttachments({
+    autoManageNetwork: false,
+    autoManageAppState: false,
+  });
   const queuedRef = useRef(false);
 
   // On app launch, queue recent message attachments for background download (T032)
   // Only queue once to prevent infinite loop
+  // Note: We don't depend on function references to prevent effect re-runs
   useEffect(() => {
-    if (!isLoadingAttachments && attachments.length > 0 && !queuedRef.current) {
+    if (isLoadingAttachments) return; // Wait for data to load
+
+    if (!queuedRef.current && attachments.length > 0) {
       queuedRef.current = true;
-      void addFilesToProcessingQueue(attachments);
+      // Schedule async operations without awaiting in effect
+      addFilesToProcessingQueue(attachments).catch((err) => {
+        console.warn('[RootLayoutContent] Failed to queue attachments:', err);
+      });
       startProcessing();
     }
-  }, [isLoadingAttachments, attachments, addFilesToProcessingQueue, startProcessing]);
+  }, [isLoadingAttachments, attachments]);
 
   return (
     <Stack
