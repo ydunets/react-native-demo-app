@@ -25,3 +25,7 @@ android
 .metro-health-check*
 
 docs
+.vscode/
+.specify/
+.env
+.env.*.local
