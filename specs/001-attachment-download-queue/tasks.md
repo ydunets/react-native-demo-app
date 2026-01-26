@@ -33,18 +33,18 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Foundational Architectural Tasks
 
-- [ ] T006 Install frontend dependencies: `npm install react-native-blob-util` (authenticated downloads with Base64 support)
-- [ ] T007 Install backend dependencies: `npm --prefix backend install express cors body-parser jsonwebtoken dotenv` (Express server with JWT auth)
-- [ ] T008 [P] Setup backend TypeScript: Create `backend/tsconfig.json`, `backend/package.json`, `backend/Dockerfile`
-- [ ] T009 [P] Create Docker Compose service: Add `file-server` service to `docker-compose.yml` with port 3001 mapping
-- [ ] T010 [P] Create environment variables: `.env.backend` with PORT=3001, NODE_ENV=development, JWT_SECRET (backend auth)
-- [ ] T011 Add feature routes to `router-map/routes.tsx` RoutePaths enum: (add type-safe download queue paths if needed)
-- [ ] T012 Create file constants in `constants/File.ts`: ATTACHMENTS_DIR, ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE (50MB), FILE_TYPES
+- [X] T006 Install frontend dependencies: `npm install react-native-blob-util` (authenticated downloads with Base64 support)
+- [X] T007 Install backend dependencies: `npm --prefix backend install express cors body-parser jsonwebtoken dotenv` (Express server with JWT auth)
+- [X] T008 [P] Setup backend TypeScript: Create `backend/tsconfig.json`, `backend/package.json`, `backend/Dockerfile`
+- [X] T009 [P] Create Docker Compose service: Add `file-server` service to `docker-compose.yml` with port 3001 mapping
+- [X] T010 [P] Create environment variables: `.env.backend` with PORT=3001, NODE_ENV=development, JWT_SECRET (backend auth)
+- [X] T011 Add feature routes to `router-map/routes.tsx` RoutePaths enum: (add type-safe download queue paths if needed)
+- [X] T012 Create file constants in `constants/File.ts`: ATTACHMENTS_DIR, ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE (50MB), FILE_TYPES
 
 ### Provider & Context Architecture
 
-- [ ] T013 Create DownloadMessageAttachmentsProvider wrapper in `contexts/downloadMessageAttachments.tsx` (context setup, no logic yet)
-- [ ] T014 Update `app/_layout.tsx` to wrap app with DownloadMessageAttachmentsProvider (add after existing providers for layering)
+- [X] T013 Create DownloadMessageAttachmentsProvider wrapper in `contexts/downloadMessageAttachments.tsx` (context setup, no logic yet)
+- [X] T014 Update `app/_layout.tsx` to wrap app with DownloadMessageAttachmentsProvider (add after existing providers for layering)
 
 **Checkpoint**: Foundation complete. User story implementation can now begin in parallel.
 

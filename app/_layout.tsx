@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
+import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
 const queryClient = new QueryClient()
@@ -33,22 +34,24 @@ export default function RootLayout() {
         <ActionSheetProvider>
           <NavThemeProvider value={NAV_THEME[colorScheme]}>
             <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                }}
-              >
-                {/* Root Index - Entry Point */}
-                <Stack.Screen name="index" options={{ headerShown: false }} />
+              <AuthProvider>
+                <DownloadMessageAttachmentsProvider>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                    }}
+                  >
+                    {/* Root Index - Entry Point */}
+                    <Stack.Screen name="index" options={{ headerShown: false }} />
 
-                {/* Auth Stack */}
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    {/* Auth Stack */}
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
-                {/* Main Stack with Tabs */}
-                <Stack.Screen name="(main)" options={{ headerShown: false }} />
-              </Stack>
-            </AuthProvider>
+                    {/* Main Stack with Tabs */}
+                    <Stack.Screen name="(main)" options={{ headerShown: false }} />
+                  </Stack>
+                </DownloadMessageAttachmentsProvider>
+              </AuthProvider>
             </QueryClientProvider>
           </NavThemeProvider>
         </ActionSheetProvider>

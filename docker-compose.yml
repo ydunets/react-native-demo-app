@@ -70,6 +70,41 @@ services:
       retries: 3
       start_period: 60s
 
+  # Attachment Download Queue File Server
+  # - Node.js Express server for serving attachment files
+  # - Handles authenticated file downloads via Bearer tokens
+  # - Supports Base64-encoded file responses
+  # - Port 3001 mapped for frontend access
+  # - Depends on backend setup (Dockerfile, environment variables)
+  file-server:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: file-server
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
+      KEYCLOAK_PUBLIC_KEY: ${KEYCLOAK_PUBLIC_KEY:-}
+      CORS_ORIGINS: http://localhost:8081,http://10.0.2.2:8081
+      MAX_FILE_SIZE: 52428800
+      STORAGE_PATH: /app/files
+      LOG_LEVEL: debug
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/files:/app/files:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - keycloak-network
+    depends_on:
+      - keycloak
+
 volumes:
   postgres_data:
     name: expo-app-keycloak-postgres-data
