@@ -11,17 +11,7 @@
  */
 
 import React, { createContext, useCallback, useRef, useEffect } from 'react';
-import { useDownloadQueueStore } from '@/store/downloadQueueStore';
-
-export interface DownloadCommand {
-  id: string;
-  attachmentId: string;
-  filename: string;
-  fileUrl: string;
-  fileSizeBytes: number;
-  messageId: string;
-  timestamp: number;
-}
+import { useDownloadQueueStore, type DownloadCommand } from '@/store/downloadQueueStore';
 
 export interface DownloadContextType {
   queue: DownloadCommand[];
@@ -159,7 +149,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<DownloadMessageAttachm
         'pending:',
         store.queue.length,
         'completed:',
-        store.completedIds.size
+        store.completedIds.length
       );
     };
 
@@ -169,7 +159,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<DownloadMessageAttachm
   const value: DownloadContextType = {
     queue: store.queue,
     isProcessing: store.isProcessing,
-    completedIds: store.completedIds,
+    completedIds: store.getCompletedIdsAsSet(),
     addCommand,
     removeCommand,
     startProcessing,
