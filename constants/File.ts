@@ -3,12 +3,12 @@
  * Defines paths, size limits, and supported file types
  */
 
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system';
 
 /**
  * Base directory for all attachments (inside cache directory)
  */
-export const ATTACHMENTS_DIR = `${FileSystem.cacheDirectory}attachments/`;
+export const ATTACHMENTS_DIR = `${Paths.cache}attachments/`;
 
 /**
  * Cache directory specifically for downloaded attachments
