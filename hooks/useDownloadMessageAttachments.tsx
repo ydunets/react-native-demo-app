@@ -37,14 +37,3 @@ export const useDownloadMessageAttachments = (): DownloadContextType => {
 
   return context;
 };
-
-/**
- * Hook to safely access download context with optional fallback
- * Returns null instead of throwing if outside provider
- * Useful for optional UI features that degrade gracefully
- *
- * @returns DownloadContextType or null if not in provider
- */
-export const useDownloadMessageAttachmentsOptional = (): DownloadContextType | null => {
-  return useContext(DownloadMessageAttachmentsContext) ?? null;
-};

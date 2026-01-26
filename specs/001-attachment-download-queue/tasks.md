@@ -59,16 +59,16 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Backend Server Entry Point
 
-- [ ] T015 Create backend server entry point: `backend/src/index.ts` with Express initialization, middleware setup (CORS, body-parser, auth), and error handling (constitution: Centralized API)
+- [X] T015 Create backend server entry point: `backend/src/index.ts` with Express initialization, middleware setup (CORS, body-parser, auth), and error handling (constitution: Centralized API)
 
 ### Backend Middleware & Authentication
 
-- [ ] T016 [P] Create JWT auth middleware: `backend/src/middleware/auth.ts` with Bearer token validation, JWT signature verification against Keycloak public key, user claim extraction (constitution: Secure State Management)
-- [ ] T017 [P] Configure CORS in backend: `backend/src/index.ts` add CORS middleware with origin whitelist for dev environments (localhost:8081, 10.0.2.2:8081, Expo Go origins)
+- [X] T016 [P] Create JWT auth middleware: `backend/src/middleware/auth.ts` with Bearer token validation, JWT signature verification against Keycloak public key, user claim extraction (constitution: Secure State Management)
+- [X] T017 [P] Configure CORS in backend: `backend/src/index.ts` add CORS middleware with origin whitelist for dev environments (localhost:8081, 10.0.2.2:8081, Expo Go origins)
 
 ### Backend API Endpoints
 
-- [ ] T018 Create file download endpoint: `backend/src/routes/files.ts` with:
+- [X] T018 Create file download endpoint: `backend/src/routes/files.ts` with:
   - POST /api/files/download route handler
   - Request body parsing (source file URL)
   - Content-Length validation (reject >50MB files with 413 status)
@@ -77,7 +77,7 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
   - Error handling (401 auth failures, 404 file not found, 413 payload too large)
   - Auth middleware applied via authMiddleware wrapper
 
-- [ ] T019 [P] Create file storage module: `backend/src/storage/fileStorage.ts` with:
+- [X] T019 [P] Create file storage module: `backend/src/storage/fileStorage.ts` with:
   - Function to fetch file from filesystem (reads sample files from `backend/files/`)
   - Function to validate Content-Length header
   - Error handling for missing files, permission errors
@@ -85,8 +85,8 @@ Each task follows the strict format: `- [ ] [TaskID] [P?] [Story?] Description w
 
 ### Backend Configuration
 
-- [ ] T020 [P] Create Dockerfile: `backend/Dockerfile` with Node.js 20.x base image, TypeScript transpilation, port 3001 exposure
-- [ ] T021 [P] Create sample files for testing: Add test files to `backend/files/` directory (e.g., sample-pdf.pdf, sample-image.jpg for local testing)
+- [X] T020 [P] Create Dockerfile: `backend/Dockerfile` with Node.js 20.x base image, TypeScript transpilation, port 3001 exposure
+- [X] T021 [P] Create sample files for testing: Add test files to `backend/files/` directory (e.g., sample-pdf.pdf, sample-image.jpg for local testing)
 
 **Checkpoint**: Backend file server ready for frontend integration. Test via: `npm run dev:backend` and curl to POST /api/files/download with Bearer token.
 

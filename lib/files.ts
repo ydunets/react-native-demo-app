@@ -230,8 +230,9 @@ export const clearAttachmentsCache = async (): Promise<boolean> => {
       }
       console.log('[FileUtils] Cleared attachments cache');
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       // Directory might not exist, try to create fresh
+      console.warn('[FileUtils] Cache directory missing, recreating:', error);
       await makeCacheDirectory();
       return true;
     }
