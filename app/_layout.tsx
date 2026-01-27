@@ -14,8 +14,9 @@ import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
 import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
 import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachments';
-import { useRecentMessageAttachments } from '@/hooks/useRecentMessageAttachments';
+import { useMessageAttachments } from '@/hooks/useMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { useDownloadQueueStore } from '@/store/downloadQueueStore';
 
 // Create QueryClient once outside of component to prevent recreation on re-renders
 const queryClient = new QueryClient();
@@ -52,14 +53,12 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  const { attachments, isLoading: isLoadingAttachments } = useRecentMessageAttachments({
-    enabled: true,
-  });
+  const { attachments, isLoading: isLoadingAttachments } = useMessageAttachments();
   // Disable auto-management here since we explicitly manage queue startup
-  const { addFilesToProcessingQueue, startProcessing } = useDownloadMessageAttachments({
-    autoManageNetwork: false,
-    autoManageAppState: false,
-  });
+  const startProcessing = useDownloadQueueStore(state => state.startProcessing);
+
+  const { addFilesToProcessingQueue } = useDownloadMessageAttachments();
+  
   const queuedRef = useRef(false);
 
   // On app launch, queue recent message attachments for background download (T032)

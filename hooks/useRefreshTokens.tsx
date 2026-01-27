@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import NetInfo from '@react-native-community/netinfo';
+import { useNetInfo } from '@/hooks/useNetInfo';
 import { useAuthStore } from '@/store/authStore';
 import { CustomError } from '@/api/errors';
 import * as AuthSession from 'expo-auth-session';
@@ -37,21 +37,6 @@ const GCTIME = ACCESS_TOKEN_LIFESPAN ** 2;
  * @returns Refresh token status and utilities
  */
 
-const useNetInfo = () => {
-  const [isConnected, setIsConnected] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isConnected ?? false);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  return { isConnected };
-};
 
 const useAppState = () => {
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
