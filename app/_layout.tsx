@@ -1,5 +1,4 @@
 import '@/global.css';
-import { useEffect, useRef } from 'react';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
@@ -14,9 +13,7 @@ import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
 import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
 import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachments';
-import { useMessageAttachments } from '@/hooks/useMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { useDownloadQueueStore } from '@/store/downloadQueueStore';
 
 // Create QueryClient once outside of component to prevent recreation on re-renders
 const queryClient = new QueryClient();
@@ -53,29 +50,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  const { attachments, isLoading: isLoadingAttachments } = useMessageAttachments();
-  // Disable auto-management here since we explicitly manage queue startup
-  const startProcessing = useDownloadQueueStore(state => state.startProcessing);
-
-  const { addFilesToProcessingQueue } = useDownloadMessageAttachments();
-  
-  const queuedRef = useRef(false);
-
-  // On app launch, queue recent message attachments for background download (T032)
-  // Only queue once to prevent infinite loop
-  // Note: We don't depend on function references to prevent effect re-runs
-  useEffect(() => {
-    if (isLoadingAttachments) return; // Wait for data to load
-
-    if (!queuedRef.current && attachments.length > 0) {
-      queuedRef.current = true;
-      // Schedule async operations without awaiting in effect
-      addFilesToProcessingQueue(attachments).catch((err) => {
-        console.warn('[RootLayoutContent] Failed to queue attachments:', err);
-      });
-      startProcessing();
-    }
-  }, [isLoadingAttachments, attachments]);
+  useDownloadMessageAttachments();
 
   return (
     <Stack
