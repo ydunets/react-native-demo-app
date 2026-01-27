@@ -21,6 +21,11 @@ export const ATTACHMENTS_CACHE_DIR = ATTACHMENTS_DIR;
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 /**
+ * Maximum number of files allowed in the cache directory
+ */
+export const MAX_CACHED_FILES = 50;
+
+/**
  * Supported file types for attachments
  * Used for validation and UI display
  */

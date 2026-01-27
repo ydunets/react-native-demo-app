@@ -16,7 +16,7 @@
  */
 
 import { Directory, File, Paths } from 'expo-file-system';
-import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE } from '@/constants/File';
+import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 
 /**
  * Get file extension from filename
@@ -207,6 +207,30 @@ export const getCachedFileSize = async (
     console.warn('[FileUtils] Error getting file size:', error);
     return 0;
   }
+};
+
+/**
+ * Get the number of files currently in the cache directory
+ *
+ * @returns Number of cached files
+ */
+export const getCachedFileCount = (): number => {
+  try {
+    const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
+    const items = cacheDir.list();
+    return items.filter((item) => item instanceof File).length;
+  } catch {
+    return 0;
+  }
+};
+
+/**
+ * Check if the cache has room for more files
+ *
+ * @returns true if the number of cached files is below MAX_CACHED_FILES
+ */
+export const isCacheFull = (): boolean => {
+  return getCachedFileCount() >= MAX_CACHED_FILES;
 };
 
 /**

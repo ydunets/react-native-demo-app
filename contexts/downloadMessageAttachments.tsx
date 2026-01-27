@@ -19,9 +19,11 @@ import { MAX_FILE_SIZE } from '@/constants/File';
 import {
   fileExistsInCache,
   getCacheFilePath,
+  getCachedFileCount,
   isFileSizeValid,
   makeCacheDirectory,
 } from '@/lib/files';
+import { MAX_CACHED_FILES } from '@/constants/File';
 import { useAuthStore } from '@/store/authStore';
 import { useDownloadQueueStore, type DownloadCommand } from '@/store/downloadQueueStore';
 import { useDownloadStatsStore } from '@/store/downloadStatsStore';
@@ -161,15 +163,28 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
   const addFilesToProcessingQueue = useCallback(
     async (attachments: AttachmentInput[]) => {
+      const cachedCount = getCachedFileCount();
+      if (cachedCount >= MAX_CACHED_FILES) {
+        console.warn('[DownloadContext] Cache is full (%d/%d files), skipping queue', cachedCount, MAX_CACHED_FILES);
+        return { isReadyToStartProcessing: false };
+      }
+
       const queuedIds = new Set(queueRef.current.map((item) => item.attachmentId));
+      let totalFiles = cachedCount + queuedIds.size;
 
       for (const attachment of attachments) {
+        if (totalFiles >= MAX_CACHED_FILES) {
+          console.warn('[DownloadContext] Cache limit reached (%d/%d), stopping enqueue', totalFiles, MAX_CACHED_FILES);
+          break;
+        }
+
         const command = await processAttachmentCommand(attachment, queuedIds);
 
         if (command) {
           addCommand(command);
           queuedIds.add(command.attachmentId);
           incrementQueued();
+          totalFiles++;
         }
       }
 
@@ -263,6 +278,13 @@ export const DownloadMessageAttachmentsProvider: React.FC<
         continue;
       }
 
+      if (getCachedFileCount() >= MAX_CACHED_FILES) {
+        console.warn('[DownloadContext] Cache full, stopping processing');
+        removeCommand(nextCommand.id);
+        break;
+      }
+
+      console.log('[DownloadContext] Downloading:', nextCommand.filename, '(id:', nextCommand.attachmentId, ')');
       const success = await downloadFile(nextCommand);
 
       removeCommand(nextCommand.id);
@@ -270,8 +292,10 @@ export const DownloadMessageAttachmentsProvider: React.FC<
       if (success) {
         markCompleted(nextCommand.id);
         incrementDownloaded();
+        console.log('[DownloadContext] Downloaded:', nextCommand.filename, '| cached:', getCachedFileCount());
       } else {
         incrementFailed();
+        console.warn('[DownloadContext] Failed:', nextCommand.filename);
       }
     }
 

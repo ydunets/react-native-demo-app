@@ -7,12 +7,12 @@ import { useQuery } from '@tanstack/react-query';
 
 import { axiosClient } from '@/api/axios-client';
 import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
-import { MAX_FILE_SIZE } from '@/constants/File';
+import { MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
 import { useDownloadQueueStore } from '@/store/downloadQueueStore';
 import { useAuthStore } from '@/store/authStore';
 
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 10;
 
 interface Attachment {
   id: string;
@@ -96,6 +96,9 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
     // Get messages from response
     const messages = data?.messages ?? [];
 
+    console.log(messages.length);
+    
+
     // Filter messages that have attachments
     const messagesWithAttachments = messages.filter(
       (message) => !!message?.attachments && message?.attachments.length > 0
@@ -104,6 +107,9 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
     const rawAttachments: Attachment[] = messagesWithAttachments.flatMap((message) => {
       return message.attachments;
     });
+
+    console.log(rawAttachments.length);
+    
 
     // Normalize attachments
     const normalized = rawAttachments
@@ -130,7 +136,7 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
         unique.set(attachment.id, attachment);
       }
 
-      if (unique.size >= DEFAULT_LIMIT) {
+      if (unique.size >= MAX_CACHED_FILES) {
         break;
       }
     }
