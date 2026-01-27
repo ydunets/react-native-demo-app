@@ -12,7 +12,6 @@ import { useColorScheme } from '@/lib/useColorScheme';
 import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
 import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
-import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 
 // Create QueryClient once outside of component to prevent recreation on re-renders
@@ -50,7 +49,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  useDownloadMessageAttachments();
+  // useDownloadMessageAttachments();
 
   return (
     <Stack

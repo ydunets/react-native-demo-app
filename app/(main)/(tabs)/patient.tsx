@@ -5,12 +5,23 @@ import { Button } from '@/components/nativewindui/Button';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
+import { ActivityIndicator } from '@/components/nativewindui/ActivityIndicator';
+import { CachedFileItem } from '@/components/CachedFileItem';
 import { useAuthContext } from '@/contexts/auth';
 import { useAuthStore } from '@/store/authStore';
+import { useCachedFiles } from '@/hooks/useCachedFiles';
+import { formatFileSize } from '@/lib/files';
 
 export default function PatientScreen() {
   const { logout } = useAuthContext();
   const { user } = useAuthStore();
+  const {
+    files: cachedFiles,
+    totalSize,
+    isLoading: isCacheLoading,
+    isClearing,
+    clearCache,
+  } = useCachedFiles();
 
   const handleLogoutPress = async () => {
     await logout();
@@ -83,6 +94,50 @@ export default function PatientScreen() {
                 Access your medical documents and files.
               </Text>
             </View>
+          </View>
+
+          <View className="mt-4 gap-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Icon name="arrow.down.circle.fill" size={20} className="text-primary" />
+                <Text variant="heading">Cached Files</Text>
+              </View>
+              {!isCacheLoading && cachedFiles.length > 0 && (
+                <Text variant="caption1" color="tertiary">
+                  {cachedFiles.length} {cachedFiles.length === 1 ? 'file' : 'files'} &middot;{' '}
+                  {formatFileSize(totalSize)}
+                </Text>
+              )}
+            </View>
+
+            {isCacheLoading ? (
+              <View className="items-center py-6">
+                <ActivityIndicator />
+              </View>
+            ) : cachedFiles.length === 0 ? (
+              <View className="items-center rounded-lg border border-border bg-card py-6">
+                <Icon name="tray" size={32} className="mb-2 text-secondary" />
+                <Text variant="subhead" color="tertiary">
+                  No cached files
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-2">
+                {cachedFiles.map((file) => (
+                  <CachedFileItem key={file.attachmentId} name={file.name} size={file.size} />
+                ))}
+                <Button
+                  variant="plain"
+                  onPress={clearCache}
+                  disabled={isClearing}>
+                  {isClearing ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text className="text-destructive">Clear Cache</Text>
+                  )}
+                </Button>
+              </View>
+            )}
           </View>
 
           <View className="mt-4 gap-2">

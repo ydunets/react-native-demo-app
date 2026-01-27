@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { authMiddleware } from './middleware/auth.js';
 import filesRouter from './routes/files.js';
+import messagesRouter from './routes/messages.js';
 
 // Load environment variables from .env.backend
 dotenv.config({ path: path.resolve(__dirname, '../../.env.backend') });
@@ -63,6 +64,9 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // File download routes (protected by auth middleware)
 app.use('/api/files', authMiddleware, filesRouter);
+
+// Messages routes (protected by auth middleware)
+app.use('/api/messages', authMiddleware, messagesRouter);
 
 // ============================================================================
 // Error Handling Middleware

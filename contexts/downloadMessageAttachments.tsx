@@ -247,9 +247,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     isProcessingRef.current = true;
 
     // Process queue while not paused and items remain
-    const shouldContinue = !pauseFlagRef.current.isPaused && queueRef.current.length > 0;
-
-    while (shouldContinue) {
+    while (!pauseFlagRef.current.isPaused && queueRef.current.length > 0) {
       const [nextCommand, ...rest] = queueRef.current;
       const completed = isCompleted(nextCommand.id);
       queueRef.current = rest;
@@ -289,8 +287,8 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
   // Initialize queue processing on provider mount
   useEffect(() => {
-    addFilesToProcessingQueue(attachments).then((isReadyToStartProcessing) => {
-      if( isReadyToStartProcessing ) {
+    addFilesToProcessingQueue(attachments).then((result) => {
+      if (result.isReadyToStartProcessing) {
         triggerProcessQueue();
       }
     })

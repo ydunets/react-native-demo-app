@@ -33,3 +33,6 @@ docs
 
 # Keycloak
 *.pem
+backend/coverage
+.env.local
+.env.backend

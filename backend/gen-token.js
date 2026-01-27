@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+const path = require('path');
 
-const secret = 'your-test-secret-key-here';
+// Load environment variables from .env.backend
+dotenv.config({ path: path.resolve(__dirname, '../.env.backend') });
+
+const secret = process.env.JWT_SECRET || 'dev-secret-key';
 const hours = 2;
 const now = Math.floor(Date.now() / 1000);
 

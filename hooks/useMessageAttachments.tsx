@@ -10,6 +10,7 @@ import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
 import { MAX_FILE_SIZE } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
 import { useDownloadQueueStore } from '@/store/downloadQueueStore';
+import { useAuthStore } from '@/store/authStore';
 
 const DEFAULT_LIMIT = 50;
 
@@ -86,6 +87,8 @@ const shouldIncludeAttachment = async (
 
 const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
   try {
+    console.log("[Fetch Attachments] Started");
+    
     const { data } = await axiosClient.get<Messages>('/messages/recent', {
       params: { limit: DEFAULT_LIMIT, includeAttachments: true },
     });
@@ -140,16 +143,20 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
 };
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const EMPTY_ATTACHMENTS: AttachmentInput[] = [];
 
 export const useMessageAttachments = () => {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
   const query = useQuery<AttachmentInput[], Error>({
     queryKey: ['message-attachments'],
     queryFn: () => fetchAndFilterAttachments(),
     staleTime: STALE_TIME,
+    enabled: isLoggedIn,
   });
 
   return {
-    attachments: query.data ?? [],
+    attachments: query.data ?? EMPTY_ATTACHMENTS,
     isLoading: query.isLoading || query.isFetching,
     error: query.error ?? null,
     refetch: query.refetch,

@@ -135,7 +135,8 @@ export const useRefreshTokens = (): RefreshTokenResult => {
   return {
     data: query.data || null,
     isRefreshing: query.isFetching,
-    canUseTokens: !query.isFetching && !!tokens?.accessToken,
+    // Allow using tokens even while refreshing if they exist
+    canUseTokens: !!tokens?.accessToken,
     error: (query.error as CustomError) || null,
   };
 };

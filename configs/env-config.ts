@@ -13,33 +13,39 @@ import { Platform } from 'react-native';
 const isAndroid = Platform.OS === 'android';
 
 /**
- * Get file server base URL
- * Different for iOS Simulator, Android Emulator, and production
+ * Get the host address for reaching the host machine from the emulator/simulator
  *
- * - iOS Simulator: localhost:3001 (host machine port forwarding)
- * - Android Emulator: 10.0.2.2:3001 (special alias to host machine)
- * - Production: EXPO_PUBLIC_FILE_SERVER_URL environment variable
- *
- * @returns Base URL for file server API (without trailing slash)
+ * - iOS Simulator: Mac's IP address (localhost doesn't work)
+ * - Android Emulator: 10.0.2.2 (special alias to host machine)
+ * - Production: localhost (overridden by env vars)
  */
+const getHostAddress = (): string => {
+  if (isAndroid) {
+    return '10.0.2.2';
+  }
+  // iOS Simulator needs Mac's IP address
+  return '192.168.100.2';
+};
+
 const getFileServerBaseURL = (): string => {
   // Production/explicit configuration takes precedence
   if (process.env.EXPO_PUBLIC_FILE_SERVER_URL) {
     return process.env.EXPO_PUBLIC_FILE_SERVER_URL;
   }
 
-  // Android Emulator uses 10.0.2.2 to reach host machine
-  if (isAndroid) {
-    return 'http://10.0.2.2:3001';
-  }
-
-  // iOS Simulator can use localhost
-  return 'http://localhost:3001';
+  return `http://${getHostAddress()}:3001`;
 };
+
+/**
+ * Get API base URL
+ * Different for iOS Simulator, Android Emulator, and production
+ *
+ * @returns Base URL for backend API
+ */
 
 export const envConfig = {
   // Keycloak server URL (no trailing slash)
-  keycloakURL: process.env.EXPO_PUBLIC_KEYCLOAK_URL || 'http://localhost:8080',
+  keycloakURL: 'http://localhost:8080',
 
   // Keycloak realm name
   realm: process.env.EXPO_PUBLIC_KEYCLOAK_REALM || 'expo-app-realm',
@@ -48,7 +54,7 @@ export const envConfig = {
   clientId: process.env.EXPO_PUBLIC_CLIENT_ID || 'expo-app',
 
   // API base URL for backend services
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || `http://${getHostAddress()}:3001/api`,
 
   // File server base URL for attachment downloads
   fileServerBaseURL: getFileServerBaseURL(),
