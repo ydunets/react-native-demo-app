@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import NetInfo from '@react-native-community/netinfo';
+import { useNetInfo } from '@/hooks/useNetInfo';
 import { useAuthStore } from '@/store/authStore';
 import { CustomError } from '@/api/errors';
 import * as AuthSession from 'expo-auth-session';
@@ -33,25 +33,10 @@ const GCTIME = ACCESS_TOKEN_LIFESPAN ** 2;
 /**
  * Custom hook for automatic token refresh
  * Respects app state (foreground/background) and network connectivity
- * 
+ *
  * @returns Refresh token status and utilities
  */
 
-const useNetInfo = () => {
-  const [isConnected, setIsConnected] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isConnected ?? false);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  return { isConnected };
-}
 
 const useAppState = () => {
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
@@ -59,14 +44,13 @@ const useAppState = () => {
 
   const isAppStateBackground = (state: AppStateStatus): boolean => {
     return state === 'background' || state === 'inactive';
-  }
-
+  };
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       setAppState(nextAppState);
 
-      if(isAppStateBackground(appState) && !isAppStateBackground(nextAppState)) {
+      if (isAppStateBackground(appState) && !isAppStateBackground(nextAppState)) {
         setHasAppBeenInBackground(true);
       }
     });
@@ -82,13 +66,16 @@ const useAppState = () => {
     setAppState,
     setHasAppBeenInBackground,
   };
-}
-
+};
 
 export const useRefreshTokens = (): RefreshTokenResult => {
-  const {updateTokens, tokens} = useAuthStore();
+  const { updateTokens, tokens } = useAuthStore();
   const { isConnected } = useNetInfo();
-  const { appState, hasAppBeenInBackground: returnedFromBackground, setHasAppBeenInBackground } = useAppState();
+  const {
+    appState,
+    hasAppBeenInBackground: returnedFromBackground,
+    setHasAppBeenInBackground,
+  } = useAppState();
 
   /**
    * Check if app state is in background
@@ -123,10 +110,8 @@ export const useRefreshTokens = (): RefreshTokenResult => {
   };
 
   const isAppStateBg = isAppStateBackground(appState);
-  const isRefreshEnabled = !!tokens?.refreshToken
-    && isConnected
-    && (!isAppStateBg || returnedFromBackground);
-    
+  const isRefreshEnabled =
+    !!tokens?.refreshToken && isConnected && (!isAppStateBg || returnedFromBackground);
 
   /**
    * React Query hook for token refresh
@@ -150,7 +135,8 @@ export const useRefreshTokens = (): RefreshTokenResult => {
   return {
     data: query.data || null,
     isRefreshing: query.isFetching,
-    canUseTokens: !query.isFetching && !!tokens?.accessToken,
+    // Allow using tokens even while refreshing if they exist
+    canUseTokens: !!tokens?.accessToken,
     error: (query.error as CustomError) || null,
   };
 };

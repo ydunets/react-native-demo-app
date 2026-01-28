@@ -25,3 +25,14 @@ android
 .metro-health-check*
 
 docs
+.vscode/
+.specify/
+.env
+.env.*.local
+.env.backend
+
+# Keycloak
+*.pem
+backend/coverage
+.env.local
+.env.backend

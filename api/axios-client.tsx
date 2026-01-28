@@ -49,9 +49,9 @@ const createAxiosClient = (): AxiosInstance => {
       if (error.response?.status === 401) {
         const { logout } = useAuthStore.getState();
         logout();
-        
+
         console.warn('Unauthorized: User logged out due to expired token');
-        
+
         // You can emit an event or use a ref to navigate from here
         // or the guard in app/(main)/_layout.tsx will catch this and redirect
       }
@@ -59,7 +59,7 @@ const createAxiosClient = (): AxiosInstance => {
       // Create CustomError from axios error
       const status = error.response?.status || 0;
       const message = error.response?.statusText || error.message || 'Network error';
-      
+
       return Promise.reject(new CustomError(message, status));
     }
   );

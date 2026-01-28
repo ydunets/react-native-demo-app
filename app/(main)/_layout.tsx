@@ -9,7 +9,7 @@ export default function MainLayout() {
 
   useEffect(() => {
     console.log('Auth Status Changed - isLoggedIn:', isLoggedIn);
-    
+
     if (!isLoggedIn) {
       router.replace('/(auth)/login');
     }

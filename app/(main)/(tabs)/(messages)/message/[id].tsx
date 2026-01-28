@@ -1,14 +1,8 @@
-import { memo, useCallback, useState, useMemo } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  View,
-  Pressable
-} from "react-native";
+import { memo, useCallback, useState, useMemo } from 'react';
+import { ActivityIndicator, ScrollView, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 
-import { Button } from '@/components/nativewindui/Button';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
@@ -36,7 +30,8 @@ const MESSAGE_DATA: Record<string, Message> = {
     id: '1',
     subject: 'Welcome Message',
     preview: 'Welcome to our app! This is a preview of the message content.',
-    message: 'Welcome to our app! This is a detailed message view. We\'re excited to have you here. This message contains important information about getting started with our platform. Feel free to explore all the features and don\'t hesitate to reach out if you have any questions.',
+    message:
+      "Welcome to our app! This is a detailed message view. We're excited to have you here. This message contains important information about getting started with our platform. Feel free to explore all the features and don't hesitate to reach out if you have any questions.",
     senderName: 'Support Team',
     sentAt: new Date('2024-01-15'),
     unread: true,
@@ -49,19 +44,19 @@ const MESSAGE_DATA: Record<string, Message> = {
     id: '2',
     subject: 'Important Update',
     preview: 'We have exciting new features available. Check them out!',
-    message: 'We have exciting new features available! Check them out in the Services tab. We\'ve been working hard to improve your experience and add new functionality that will make your workflow more efficient. Please take a moment to explore these updates.',
+    message:
+      "We have exciting new features available! Check them out in the Services tab. We've been working hard to improve your experience and add new functionality that will make your workflow more efficient. Please take a moment to explore these updates.",
     senderName: 'Admin',
     sentAt: new Date('2024-01-14'),
     unread: true,
-    attachments: [
-      { id: '1', name: 'Release Notes.pdf', type: 'pdf' },
-    ],
+    attachments: [{ id: '1', name: 'Release Notes.pdf', type: 'pdf' }],
   },
   '3': {
     id: '3',
     subject: 'Reminder',
-    preview: 'Don\'t forget to check in regularly for updates.',
-    message: 'This is a reminder message. Don\'t forget to check in regularly. Regular check-ins help us provide you with the best possible service and ensure you\'re up to date with all the latest information.',
+    preview: "Don't forget to check in regularly for updates.",
+    message:
+      "This is a reminder message. Don't forget to check in regularly. Regular check-ins help us provide you with the best possible service and ensure you're up to date with all the latest information.",
     senderName: 'System',
     sentAt: new Date('2024-01-13'),
     unread: false,
@@ -70,7 +65,8 @@ const MESSAGE_DATA: Record<string, Message> = {
     id: '4',
     subject: 'Meeting Scheduled',
     preview: 'Your meeting has been scheduled for next Monday.',
-    message: 'Your meeting has been scheduled for next Monday at 2:00 PM. Please confirm your attendance and let us know if you need to reschedule. We look forward to meeting with you.',
+    message:
+      'Your meeting has been scheduled for next Monday at 2:00 PM. Please confirm your attendance and let us know if you need to reschedule. We look forward to meeting with you.',
     senderName: 'Calendar',
     sentAt: new Date('2024-01-12'),
     unread: false,
@@ -83,7 +79,8 @@ const MESSAGE_DATA: Record<string, Message> = {
     id: '5',
     subject: 'Document Review',
     preview: 'Please review the attached documents at your convenience.',
-    message: 'Please review the attached documents at your convenience. Your feedback is important to us. If you have any questions or concerns, please don\'t hesitate to reach out.',
+    message:
+      "Please review the attached documents at your convenience. Your feedback is important to us. If you have any questions or concerns, please don't hesitate to reach out.",
     senderName: 'HR Department',
     sentAt: new Date('2024-01-11'),
     unread: true,
@@ -109,10 +106,12 @@ function MessageHeader({ message, onBack }: { message: Message; onBack: () => vo
 
   return (
     <View className="border-b border-border pb-4">
-      <View className="flex-row items-center justify-between mb-4">
+      <View className="mb-4 flex-row items-center justify-between">
         <Pressable onPress={onBack} className="flex-row items-center gap-2">
           <Icon name="chevron.left" size={20} className="text-primary" />
-          <Text variant="body" color="primary">Back</Text>
+          <Text variant="body" color="primary">
+            Back
+          </Text>
         </Pressable>
         <Pressable className="p-2">
           <Icon name="archivebox.fill" size={24} className="text-primary" />
@@ -148,9 +147,9 @@ function AttachmentItem({
   attachment,
   messageId,
   isAttachmentInView,
-  setIsAttachmentInView
+  setIsAttachmentInView,
 }: AttachmentItemProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloading] = useState(false);
   const router = useRouter();
 
   const getIconName = (type: string) => {
@@ -181,7 +180,7 @@ function AttachmentItem({
   return (
     <Pressable
       onPress={handlePressAttachment}
-      className="flex-row items-center gap-3 p-3 rounded-lg border border-border bg-card active:opacity-70">
+      className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-3 active:opacity-70">
       <Icon name={getIconName(attachment.type)} size={24} className="text-primary" />
       <View className="flex-1">
         <Text variant="body" className="mb-1">
@@ -219,7 +218,7 @@ function AttachmentList({ attachments, messageId }: AttachmentListProps) {
       <Text variant="heading" className="mt-[20]">
         Attachments
       </Text>
-      <View className="flex-row flex-wrap gap-[8] mt-[8]">
+      <View className="mt-[8] flex-row flex-wrap gap-[8]">
         {attachments.map((attachment) => {
           return (
             <AttachmentItem
@@ -244,7 +243,7 @@ function MessageBody({ message }: { message: Message }) {
       <Text variant="title1" className="mb-4">
         {message.subject}
       </Text>
-      <Text variant="body" className="leading-6 mb-6">
+      <Text variant="body" className="mb-6 leading-6">
         {message.message}
       </Text>
       <MemoizedAttachmentList attachments={message.attachments} messageId={message.id} />
@@ -262,10 +261,13 @@ export default function MessageScreen() {
   }, [params.id]);
 
   // Dynamic screen options based on message
-  const screenOptions = useMemo(() => ({
-    headerShown: false,
-    title: message.subject,
-  }), [message.subject]);
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      title: message.subject,
+    }),
+    [message.subject]
+  );
 
   const handlePressBack = () => {
     router.back();

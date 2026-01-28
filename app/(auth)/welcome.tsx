@@ -7,7 +7,7 @@ import { Text } from '@/components/nativewindui/Text';
 export default function WelcomeScreen() {
   return (
     <ScrollView className="flex-1">
-      <View className="gap-4 p-4 items-center justify-center min-h-full">
+      <View className="min-h-full items-center justify-center gap-4 p-4">
         <Text variant="largeTitle" className="text-center">
           Welcome
         </Text>
@@ -23,4 +23,3 @@ export default function WelcomeScreen() {
     </ScrollView>
   );
 }
-

@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack } from 'expo-router';
 
 export default function MessagesLayout() {
   return (
@@ -9,19 +9,19 @@ export default function MessagesLayout() {
       <Stack.Screen
         name="messages"
         options={{
-          headerShown: false
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="message/[id]"
         options={{
-          headerShown: false
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="message/[id]/attachment/[attachmentId]"
         options={{
-          headerShown: false
+          headerShown: false,
         }}
       />
     </Stack>
