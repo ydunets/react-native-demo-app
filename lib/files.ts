@@ -18,6 +18,47 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 
+const UUID_LENGTH = 36; // 8-4-4-4-12
+
+const parseCachedFilename = (
+  rawName: string
+): { attachmentId: string; name: string } | null => {
+  if (rawName.length > UUID_LENGTH && rawName[UUID_LENGTH] === '-') {
+    return {
+      attachmentId: rawName.substring(0, UUID_LENGTH),
+      name: rawName.substring(UUID_LENGTH + 1),
+    };
+  }
+
+  const dashIndex = rawName.indexOf('-');
+  if (dashIndex === -1) return null;
+
+  return {
+    attachmentId: rawName.substring(0, dashIndex),
+    name: rawName.substring(dashIndex + 1),
+  };
+};
+
+export const getCachedFilenames = (): Set<string> => {
+  try {
+    const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
+    const items = cacheDir.list();
+    const names = new Set<string>();
+
+    for (const item of items) {
+      if (!(item instanceof File)) continue;
+      const parsed = parseCachedFilename(item.name);
+      if (parsed?.name) {
+        names.add(parsed.name);
+      }
+    }
+
+    return names;
+  } catch {
+    return new Set();
+  }
+};
+
 /**
  * Get file extension from filename
  * @param filename - Full filename with extension
@@ -93,8 +134,11 @@ export const fileExistsInCache = async (
   try {
     const filePath = getCacheFilePath(attachmentId, filename);
     const file = new File(filePath);
-    // File.exists is a synchronous property
-    return file.exists;
+    if (file.exists) return true;
+
+    // Fallback: any cached file with the same original filename
+    const cachedNames = getCachedFilenames();
+    return cachedNames.has(filename);
   } catch (error) {
     console.warn('[FileUtils] Error checking file existence:', error);
     return false;

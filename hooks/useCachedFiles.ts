@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
 import { clearAttachmentsCache } from '@/lib/files';
+import { useInFlightAttachmentId } from '@/stores/downloadQueue';
 
 export interface CachedFile {
   name: string;
   size: number;
   attachmentId: string;
   path: string;
+  isInFlight?: boolean;
 }
 
 interface UseCachedFilesResult {
@@ -25,6 +27,16 @@ interface UseCachedFilesResult {
 const parseCachedFilename = (
   rawName: string
 ): { attachmentId: string; name: string } | null => {
+  // Stored as: {uuid}-{filename}. UUIDs are 36 chars (8-4-4-4-12) so we can split safely.
+  const UUID_LENGTH = 36;
+
+  if (rawName.length > UUID_LENGTH && rawName[UUID_LENGTH] === '-') {
+    return {
+      attachmentId: rawName.substring(0, UUID_LENGTH),
+      name: rawName.substring(UUID_LENGTH + 1),
+    };
+  }
+
   const dashIndex = rawName.indexOf('-');
   if (dashIndex === -1) return null;
 
@@ -43,6 +55,7 @@ export const useCachedFiles = (): UseCachedFilesResult => {
   const [totalSize, setTotalSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const inFlightId = useInFlightAttachmentId();
 
   const loadCachedFiles = useCallback(() => {
     try {
@@ -60,6 +73,7 @@ export const useCachedFiles = (): UseCachedFilesResult => {
       }
 
       const result: CachedFile[] = [];
+      const seen = new Set<string>();
       let size = 0;
 
       for (const item of items) {
@@ -67,6 +81,12 @@ export const useCachedFiles = (): UseCachedFilesResult => {
 
         const parsed = parseCachedFilename(item.name);
         if (!parsed) continue;
+
+        const key = `${parsed.attachmentId}-${parsed.name}`;
+        if (seen.has(key)) {
+          continue; // Avoid listing duplicates with the same id/name
+        }
+        seen.add(key);
 
         const fileSize = item.size ?? 0;
         size += fileSize;
@@ -76,6 +96,7 @@ export const useCachedFiles = (): UseCachedFilesResult => {
           size: fileSize,
           attachmentId: parsed.attachmentId,
           path: item.uri,
+          isInFlight: parsed.attachmentId === inFlightId,
         });
       }
 
@@ -91,7 +112,7 @@ export const useCachedFiles = (): UseCachedFilesResult => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [inFlightId]);
 
   const clearCache = useCallback(async () => {
     setIsClearing(true);

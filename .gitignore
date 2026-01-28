@@ -36,3 +36,6 @@ docs
 backend/coverage
 .env.local
 .env.backend
+logs/
+.claude
+.github

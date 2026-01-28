@@ -4,12 +4,18 @@ export {
   useQueue,
   useIsProcessing,
   useCompletedIds,
+  useQueueCount,
+  useCompletedCount,
+  useInFlightAttachmentId,
 } from './hooks';
 export {
   selectDownloadQueueActions,
   selectQueue,
   selectIsProcessing,
   selectCompletedIds,
+  selectQueueCount,
+  selectCompletedCount,
+  selectInFlightId,
   selectCompletedIdsAsSet,
   selectIsCompleted,
   selectPausedDueToStorage,

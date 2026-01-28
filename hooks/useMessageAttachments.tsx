@@ -62,7 +62,8 @@ const normalizeAttachment = (attachment: Attachment): AttachmentInput | null => 
 const shouldIncludeAttachment = async (
   attachment: AttachmentInput,
   completed: Set<string>,
-  queuedIds: Set<string>
+  queuedIds: Set<string>,
+  seenFilenames: Set<string>
 ): Promise<boolean> => {
   if (!isFileSizeValid(attachment.fileSizeBytes ?? 0)) {
     return false;
@@ -73,6 +74,10 @@ const shouldIncludeAttachment = async (
   }
 
   if (completed.has(attachment.id) || queuedIds.has(attachment.id)) {
+    return false;
+  }
+
+  if (seenFilenames.has(attachment.name)) {
     return false;
   }
 
@@ -87,7 +92,7 @@ const shouldIncludeAttachment = async (
 
 const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
   try {
-    console.log("[Fetch Attachments] Started");
+    console.warn("[Fetch Attachments] Started");
     
     const { data } = await axiosClient.get<Messages>('/messages/recent', {
       params: { limit: DEFAULT_LIMIT, includeAttachments: true },
@@ -95,10 +100,7 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
 
     // Get messages from response
     const messages = data?.messages ?? [];
-
-    console.log(messages.length);
-    
-
+  
     // Filter messages that have attachments
     const messagesWithAttachments = messages.filter(
       (message) => !!message?.attachments && message?.attachments.length > 0
@@ -107,8 +109,6 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
     const rawAttachments: Attachment[] = messagesWithAttachments.flatMap((message) => {
       return message.attachments;
     });
-
-    console.log(rawAttachments.length);
     
 
     // Normalize attachments
@@ -122,18 +122,20 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
       useDownloadQueueStore.getState().queue.map((item) => item.attachmentId)
     );
 
-    // Filter and deduplicate
+    // Filter and deduplicate by filename (not attachment ID)
     const unique = new Map<string, AttachmentInput>();
+    const seenFilenames = new Set<string>();
 
     for (const attachment of normalized) {
-      const shouldInclude = await shouldIncludeAttachment(attachment, completed, queuedIds);
-      
+      const shouldInclude = await shouldIncludeAttachment(attachment, completed, queuedIds, seenFilenames);
+
       if (!shouldInclude) {
         continue;
       }
 
-      if (!unique.has(attachment.id)) {
-        unique.set(attachment.id, attachment);
+      if (!unique.has(attachment.name)) {
+        unique.set(attachment.name, attachment);
+        seenFilenames.add(attachment.name);
       }
 
       if (unique.size >= MAX_CACHED_FILES) {

@@ -53,10 +53,15 @@ router.get('/recent', (req: Request, res: Response) => {
       const attachments = [];
 
       if (includeAttachments) {
-        // Each message gets 4 attachments (cycle through available files)
+        const usedFilenames = new Set<string>();
+        // Each message gets up to 4 attachments (skip duplicate filenames)
         for (let j = 0; j < 4; j++) {
           const fileIndex = (i * 4 + j) % availableFiles.length;
           const filename = availableFiles[fileIndex];
+
+          if (usedFilenames.has(filename)) continue;
+          usedFilenames.add(filename);
+
           const metadata = getFileMetadata(filename);
 
           if (metadata) {

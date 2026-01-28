@@ -4,6 +4,9 @@ import {
   selectQueue,
   selectIsProcessing,
   selectCompletedIds,
+  selectQueueCount,
+  selectCompletedCount,
+  selectInFlightId,
 } from './selectors';
 import type { DownloadQueueStore } from './types';
 
@@ -18,3 +21,12 @@ export const useIsProcessing = (): boolean =>
 
 export const useCompletedIds = (): string[] =>
   useDownloadQueueStore(selectCompletedIds);
+
+export const useQueueCount = (): number =>
+  useDownloadQueueStore(selectQueueCount);
+
+export const useCompletedCount = (): number =>
+  useDownloadQueueStore(selectCompletedCount);
+
+export const useInFlightAttachmentId = (): string | null =>
+  useDownloadQueueStore(selectInFlightId);

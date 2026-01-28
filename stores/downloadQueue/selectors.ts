@@ -8,9 +8,17 @@ export const selectIsProcessing = (state: DownloadQueueStore) => state.isProcess
 
 export const selectCompletedIds = (state: DownloadQueueStore) => state.completedIds;
 
+export const selectQueueCount = (state: DownloadQueueStore) => state.queue.length;
+
+export const selectCompletedCount = (state: DownloadQueueStore) =>
+  state.completedIds.length;
+
 export const selectPausedDueToStorage = (state: DownloadQueueStore) => state.pausedDueToStorage;
 
 export const selectPausedDueToAuth = (state: DownloadQueueStore) => state.pausedDueToAuth;
+
+export const selectInFlightId = (state: DownloadQueueStore) =>
+  state.queue.length > 0 ? state.queue[0].attachmentId : null;
 
 /**
  * Returns completed IDs as a Set.

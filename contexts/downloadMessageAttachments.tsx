@@ -113,7 +113,8 @@ export const DownloadMessageAttachmentsProvider: React.FC<
   const processAttachmentCommand = useCallback(
     async (
       attachment: AttachmentInput,
-      queuedIds: Set<string>
+      queuedIds: Set<string>,
+      queuedFilenames: Set<string>
     ): Promise<DownloadCommand | null> => {
       const attachmentId = attachment.id;
       const filename = attachment.name;
@@ -132,7 +133,11 @@ export const DownloadMessageAttachmentsProvider: React.FC<
         return null;
       }
 
-      if (useDownloadQueueStore.getState().completedIds.includes(attachmentId) || queuedIds.has(attachmentId)) {
+      if (
+        useDownloadQueueStore.getState().completedIds.includes(attachmentId) ||
+        queuedIds.has(attachmentId) ||
+        queuedFilenames.has(filename)
+      ) {
         incrementSkippedCompleted();
         return null;
       }
@@ -174,6 +179,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
       }
 
       const queuedIds = new Set(queueRef.current.map((item) => item.attachmentId));
+      const queuedFilenames = new Set(queueRef.current.map((item) => item.filename));
       let totalFiles = cachedCount + queuedIds.size;
       let addedCount = 0;
 
@@ -183,11 +189,12 @@ export const DownloadMessageAttachmentsProvider: React.FC<
           break;
         }
 
-        const command = await processAttachmentCommand(attachment, queuedIds);
+        const command = await processAttachmentCommand(attachment, queuedIds, queuedFilenames);
 
         if (command) {
           addCommand(command);
           queuedIds.add(command.attachmentId);
+          queuedFilenames.add(command.filename);
           incrementQueued();
           totalFiles++;
           addedCount++;
