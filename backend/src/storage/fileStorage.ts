@@ -88,6 +88,28 @@ export const getFileMetadata = (filename: string): FileMetadata | null => {
 };
 
 /**
+ * Get full file path for a filename
+ * @param filename Name of the file
+ * @returns Full path to the file
+ * @throws Error if filename is invalid
+ */
+export const getFilePath = (filename: string): string => {
+  // Validate filename (prevent directory traversal)
+  if (filename.includes('..') || filename.startsWith('/')) {
+    throw new Error('Invalid filename');
+  }
+
+  const filePath = path.join(STORAGE_PATH, filename);
+
+  // Ensure the resolved path is within STORAGE_PATH
+  if (!filePath.startsWith(STORAGE_PATH)) {
+    throw new Error('Invalid filename');
+  }
+
+  return filePath;
+};
+
+/**
  * Read file from storage and return as buffer + Base64
  * @param filename Name of the file to read
  * @returns FileResponse with buffer and Base64 encoded content

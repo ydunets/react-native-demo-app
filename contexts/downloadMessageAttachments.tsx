@@ -12,7 +12,6 @@
 
 import React, { createContext, useCallback, useMemo, useRef, useEffect } from 'react';
 import RNFetchBlob from 'react-native-blob-util';
-import { File } from 'expo-file-system';
 
 import { envConfig } from '@/configs/env-config';
 import { MAX_FILE_SIZE } from '@/constants/File';
@@ -213,9 +212,15 @@ export const DownloadMessageAttachmentsProvider: React.FC<
       try {
         await makeCacheDirectory();
 
-        const response = await RNFetchBlob.fetch(
+        // Get expo-file-system path and convert to native path for RNFetchBlob
+        const expoPath = getCacheFilePath(attachmentId, filename);
+        const nativePath = expoPath.replace(/^file:\/\//, '');
+
+        const response = await RNFetchBlob.config({
+          path: nativePath,
+        }).fetch(
           'POST',
-          `${envConfig.fileServerBaseURL}/api/files/download`,
+          `${envConfig.fileServerBaseURL}/api/files/download-binary`,
           {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -229,12 +234,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
           return false;
         }
 
-        const base64 = await response.base64();
-        const filePath = getCacheFilePath(attachmentId, filename);
-
-        const file = new File(filePath);
-        await file.write(base64, { encoding: 'base64' });
-
+        // File is already written to disk by RNFetchBlob
         return true;
       } catch (error) {
         console.error('[DownloadContext] Error downloading file', filename, error);
