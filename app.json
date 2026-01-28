@@ -8,7 +8,10 @@
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTabletMode": true,
-      "bundleIdentifier": "com.example.expoapppresentation"
+      "bundleIdentifier": "com.example.expoapppresentation",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
     },
     "android": {
       "package": "com.example.expoapppresentation",
