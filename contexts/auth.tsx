@@ -5,7 +5,8 @@
 
 import React, { ReactNode } from 'react';
 import * as AuthSession from 'expo-auth-session';
-import { useAuthStore, UserProfile } from '@/store/authStore';
+import { useIsLoggedIn, useAuthActions } from '@/stores/auth';
+import type { UserProfile } from '@/stores/auth';
 import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { envConfig } from '@/configs/env-config';
 import { useNonce } from '@/hooks/useNonce';
@@ -42,7 +43,8 @@ interface AuthProviderProps {
  * @param children - Child components
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { isLoggedIn, logoutFromKeycloak, setTokens, setUser } = useAuthStore();
+  const isLoggedIn = useIsLoggedIn();
+  const { logoutFromKeycloak, setTokens, setUser } = useAuthActions();
   const { isRefreshing, canUseTokens } = useRefreshTokens();
   const discoveryUrl = `${envConfig.keycloakURL}/realms/${envConfig.realm}`;
   const discovery = AuthSession.useAutoDiscovery(discoveryUrl);

@@ -1,10 +1,10 @@
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAuthStore } from '@/store/authStore';
+import { useIsLoggedIn } from '@/stores/auth';
 import { useEffect } from 'react';
 
 export default function MainLayout() {
-  const { isLoggedIn } = useAuthStore();
+  const isLoggedIn = useIsLoggedIn();
   const router = useRouter();
 
   useEffect(() => {

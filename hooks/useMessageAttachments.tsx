@@ -9,8 +9,8 @@ import { axiosClient } from '@/api/axios-client';
 import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
 import { MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
-import { useDownloadQueueStore } from '@/store/downloadQueueStore';
-import { useAuthStore } from '@/store/authStore';
+import { useDownloadQueueStore, selectCompletedIdsAsSet } from '@/stores/downloadQueue';
+import { useIsLoggedIn } from '@/stores/auth';
 
 const DEFAULT_LIMIT = 10;
 
@@ -78,7 +78,7 @@ const shouldIncludeAttachment = async (
 
   const existsInCache = await fileExistsInCache(attachment.id, attachment.name);
   if (existsInCache) {
-    useDownloadQueueStore.getState().markCompleted(attachment.id);
+    useDownloadQueueStore.getState().actions.markCompleted(attachment.id);
     return false;
   }
 
@@ -117,7 +117,7 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
       .filter((item) => item !== null);
 
     // Get current queue state for filtering
-    const completed = useDownloadQueueStore.getState().getCompletedIdsAsSet();
+    const completed = selectCompletedIdsAsSet(useDownloadQueueStore.getState());
     const queuedIds = new Set(
       useDownloadQueueStore.getState().queue.map((item) => item.attachmentId)
     );
@@ -152,7 +152,7 @@ const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const EMPTY_ATTACHMENTS: AttachmentInput[] = [];
 
 export const useMessageAttachments = () => {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const isLoggedIn = useIsLoggedIn();
 
   const query = useQuery<AttachmentInput[], Error>({
     queryKey: ['message-attachments'],

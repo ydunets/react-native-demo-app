@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 import { useAppState } from './useAppState';
 import { useNetInfo } from './useNetInfo';
-import { useDownloadQueueStore } from '@/store/downloadQueueStore';
+import { useDownloadQueueActions } from '@/stores/downloadQueue';
 
 /**
  * Hook to access download queue context
@@ -13,12 +13,7 @@ import { useDownloadQueueStore } from '@/store/downloadQueueStore';
  * @throws Error if used outside provider
  */
 export const useDownloadMessageAttachments = () => {
-  const {pauseProcessing, resumeProcessing} = useDownloadQueueStore(state => {
-    return {
-      resumeProcessing: state.resumeProcessing,
-      pauseProcessing: state.pauseProcessing,
-    };
-  });
+  const { pauseProcessing, resumeProcessing } = useDownloadQueueActions();
   const { isAppActive } = useAppState();
   const { isConnected } = useNetInfo();
 

@@ -1,9 +1,9 @@
 import { Redirect } from 'expo-router';
-import { useAuthStore } from '@/store/authStore';
+import { useIsLoggedIn } from '@/stores/auth';
 import RoutePaths from '../router-map/routes';
 
 export default function Index() {
-  const { isLoggedIn } = useAuthStore();
+  const isLoggedIn = useIsLoggedIn();
 
   if (isLoggedIn) {
     return <Redirect href={RoutePaths.HomeScreen} />;

@@ -24,9 +24,10 @@ import {
   makeCacheDirectory,
 } from '@/lib/files';
 import { MAX_CACHED_FILES } from '@/constants/File';
-import { useAuthStore } from '@/store/authStore';
-import { useDownloadQueueStore, type DownloadCommand } from '@/store/downloadQueueStore';
-import { useDownloadStatsStore } from '@/store/downloadStatsStore';
+import { useAuthStore } from '@/stores/auth';
+import { useDownloadQueueStore, useQueue, useDownloadQueueActions } from '@/stores/downloadQueue';
+import type { DownloadCommand } from '@/stores/downloadQueue';
+import { useDownloadStatsActions } from '@/stores/downloadStats';
 import { useMessageAttachments } from '@/hooks/useMessageAttachments';
 
 export type AttachmentInput = {
@@ -80,15 +81,14 @@ export const DownloadMessageAttachmentsProvider: React.FC<
   DownloadMessageAttachmentsProviderProps
 > = ({ children }) => {
   const {attachments} = useMessageAttachments();
+  const queue = useQueue();
   const {
-    queue,
     addCommand,
     removeCommand,
-    isCompleted,
     pauseProcessing,
     markCompleted,
-  } = useDownloadQueueStore();
-  
+  } = useDownloadQueueActions();
+
   const {
     incrementQueued,
     incrementSkippedCompleted,
@@ -97,10 +97,15 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     incrementSkippedMissingUrl,
     incrementDownloaded,
     incrementFailed,
-  } = useDownloadStatsStore();
+  } = useDownloadStatsActions();
 
   const queueRef = useRef<DownloadCommand[]>(queue);
   const isProcessingRef = useRef(false);
+
+  // Keep queueRef in sync with store queue
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   // Pause flag using Proxy for reactive updates without re-renders
   const pauseFlagRef = useRef(new Proxy(proxyTarget, proxyHandler));
@@ -127,7 +132,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
         return null;
       }
 
-      if (isCompleted(attachmentId) || queuedIds.has(attachmentId)) {
+      if (useDownloadQueueStore.getState().completedIds.includes(attachmentId) || queuedIds.has(attachmentId)) {
         incrementSkippedCompleted();
         return null;
       }
@@ -156,7 +161,6 @@ export const DownloadMessageAttachmentsProvider: React.FC<
       incrementSkippedOversize,
       incrementSkippedCompleted,
       incrementSkippedCached,
-      isCompleted,
       markCompleted,
     ]
   );
@@ -171,6 +175,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
 
       const queuedIds = new Set(queueRef.current.map((item) => item.attachmentId));
       let totalFiles = cachedCount + queuedIds.size;
+      let addedCount = 0;
 
       for (const attachment of attachments) {
         if (totalFiles >= MAX_CACHED_FILES) {
@@ -185,11 +190,12 @@ export const DownloadMessageAttachmentsProvider: React.FC<
           queuedIds.add(command.attachmentId);
           incrementQueued();
           totalFiles++;
+          addedCount++;
         }
       }
 
       return {
-        isReadyToStartProcessing: queueRef.current.length > 0,
+        isReadyToStartProcessing: addedCount > 0 || queueRef.current.length > 0,
       }
     },
     [addCommand, incrementQueued, processAttachmentCommand]
@@ -264,7 +270,7 @@ export const DownloadMessageAttachmentsProvider: React.FC<
     // Process queue while not paused and items remain
     while (!pauseFlagRef.current.isPaused && queueRef.current.length > 0) {
       const [nextCommand, ...rest] = queueRef.current;
-      const completed = isCompleted(nextCommand.id);
+      const completed = useDownloadQueueStore.getState().completedIds.includes(nextCommand.id);
       queueRef.current = rest;
 
       if (completed) {

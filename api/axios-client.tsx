@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
 import { CustomError } from './errors';
 
@@ -47,7 +47,7 @@ const createAxiosClient = (): AxiosInstance => {
     async (error: AxiosError) => {
       // Handle 401 Unauthorized - token expired or invalid
       if (error.response?.status === 401) {
-        const { logout } = useAuthStore.getState();
+        const { logout } = useAuthStore.getState().actions;
         logout();
 
         console.warn('Unauthorized: User logged out due to expired token');

@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNetInfo } from '@/hooks/useNetInfo';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthActions, useTokens } from '@/stores/auth';
 import { CustomError } from '@/api/errors';
 import * as AuthSession from 'expo-auth-session';
 import { envConfig } from '@/configs/env-config';
@@ -28,7 +28,7 @@ interface RefreshTokenResult {
 // const ONE_MINUTE = 60 * 1000;
 const ACCESS_TOKEN_LIFESPAN = 60 * 60 * 1000; // 1 hour
 const MAX_RETRY_ATTEMPTS = 3;
-const GCTIME = ACCESS_TOKEN_LIFESPAN ** 2;
+const GARBAGE_COLLECTED_TIME = ACCESS_TOKEN_LIFESPAN ** 2;
 
 /**
  * Custom hook for automatic token refresh
@@ -69,7 +69,8 @@ const useAppState = () => {
 };
 
 export const useRefreshTokens = (): RefreshTokenResult => {
-  const { updateTokens, tokens } = useAuthStore();
+  const { updateTokens } = useAuthActions();
+  const tokens = useTokens();
   const { isConnected } = useNetInfo();
   const {
     appState,
@@ -129,7 +130,7 @@ export const useRefreshTokens = (): RefreshTokenResult => {
       return failureCount < MAX_RETRY_ATTEMPTS; // Retry network errors max 3 times
     },
     staleTime: ACCESS_TOKEN_LIFESPAN,
-    gcTime: GCTIME,
+    gcTime: GARBAGE_COLLECTED_TIME,
   });
 
   return {
