@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, useMemo } from 'react';
+import { memo, useCallback, useState, useMemo, useEffect } from 'react';
 import { ActivityIndicator, ScrollView, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -6,94 +6,58 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
+import { getCachedFilenames } from '@/lib/files';
+import type { Message, Attachment } from '@/types/message';
 
-type Attachment = {
-  id: string;
-  name: string;
-  type: string;
+const BYTES_PER_KB = 1024;
+const BYTES_PER_MB = BYTES_PER_KB * 1024;
+
+/**
+ * Format file size in human-readable format
+ */
+const formatFileSize = (bytes: number): string => {
+  if (bytes < BYTES_PER_KB) return `${bytes} B`;
+  if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} KB`;
+  return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
 };
 
-type Message = {
-  id: string;
-  subject: string;
-  preview: string;
-  message: string;
-  senderName: string;
-  sentAt: Date;
-  unread?: boolean;
-  attachments?: Attachment[];
+/**
+ * Get file extension from filename
+ */
+const getFileExtension = (filename: string): string => {
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
 };
 
-// Message data matching the list
-const MESSAGE_DATA: Record<string, Message> = {
-  '1': {
-    id: '1',
-    subject: 'Welcome Message',
-    preview: 'Welcome to our app! This is a preview of the message content.',
-    message:
-      "Welcome to our app! This is a detailed message view. We're excited to have you here. This message contains important information about getting started with our platform. Feel free to explore all the features and don't hesitate to reach out if you have any questions.",
-    senderName: 'Support Team',
-    sentAt: new Date('2024-01-15'),
-    unread: true,
-    attachments: [
-      { id: '1', name: 'Getting Started Guide.pdf', type: 'pdf' },
-      { id: '2', name: 'Welcome Video.mp4', type: 'video' },
-    ],
-  },
-  '2': {
-    id: '2',
-    subject: 'Important Update',
-    preview: 'We have exciting new features available. Check them out!',
-    message:
-      "We have exciting new features available! Check them out in the Services tab. We've been working hard to improve your experience and add new functionality that will make your workflow more efficient. Please take a moment to explore these updates.",
-    senderName: 'Admin',
-    sentAt: new Date('2024-01-14'),
-    unread: true,
-    attachments: [{ id: '1', name: 'Release Notes.pdf', type: 'pdf' }],
-  },
-  '3': {
-    id: '3',
-    subject: 'Reminder',
-    preview: "Don't forget to check in regularly for updates.",
-    message:
-      "This is a reminder message. Don't forget to check in regularly. Regular check-ins help us provide you with the best possible service and ensure you're up to date with all the latest information.",
-    senderName: 'System',
-    sentAt: new Date('2024-01-13'),
-    unread: false,
-  },
-  '4': {
-    id: '4',
-    subject: 'Meeting Scheduled',
-    preview: 'Your meeting has been scheduled for next Monday.',
-    message:
-      'Your meeting has been scheduled for next Monday at 2:00 PM. Please confirm your attendance and let us know if you need to reschedule. We look forward to meeting with you.',
-    senderName: 'Calendar',
-    sentAt: new Date('2024-01-12'),
-    unread: false,
-    attachments: [
-      { id: '1', name: 'Meeting Agenda.docx', type: 'docx' },
-      { id: '2', name: 'Location Map.png', type: 'image' },
-    ],
-  },
-  '5': {
-    id: '5',
-    subject: 'Document Review',
-    preview: 'Please review the attached documents at your convenience.',
-    message:
-      "Please review the attached documents at your convenience. Your feedback is important to us. If you have any questions or concerns, please don't hesitate to reach out.",
-    senderName: 'HR Department',
-    sentAt: new Date('2024-01-11'),
-    unread: true,
-    attachments: [
-      { id: '1', name: 'Policy Document.pdf', type: 'pdf' },
-      { id: '2', name: 'Review Form.pdf', type: 'pdf' },
-    ],
-  },
+/**
+ * Get icon name based on file extension
+ */
+const getIconNameFromExtension = (extension: string): string => {
+  switch (extension) {
+    case 'pdf':
+      return 'doc.fill';
+    case 'docx':
+    case 'doc':
+      return 'doc.fill';
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'webp':
+      return 'photo.fill';
+    case 'mp4':
+    case 'mov':
+    case 'avi':
+      return 'play.circle.fill';
+    default:
+      return 'doc.fill';
+  }
 };
 
 function MessageHeader({ message, onBack }: { message: Message; onBack: () => void }) {
   const formattedDate = useMemo(() => {
-    return message.sentAt.toLocaleDateString('en-US', {
+    const sentDate = new Date(message.sentAt);
+    return sentDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -139,59 +103,46 @@ function MessageHeader({ message, onBack }: { message: Message; onBack: () => vo
 type AttachmentItemProps = {
   attachment: Attachment;
   messageId: string;
-  isAttachmentInView: boolean;
-  setIsAttachmentInView: (isAttachmentInView: boolean) => void;
+  isCached: boolean;
+  onPress: (attachment: Attachment) => void;
 };
 
-function AttachmentItem({
-  attachment,
-  messageId,
-  isAttachmentInView,
-  setIsAttachmentInView,
-}: AttachmentItemProps) {
+function AttachmentItem({ attachment, messageId, isCached, onPress }: AttachmentItemProps) {
   const [isDownloading] = useState(false);
-  const router = useRouter();
 
-  const getIconName = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf':
-        return 'doc.fill';
-      case 'docx':
-      case 'doc':
-        return 'doc.fill';
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-      case 'image':
-        return 'photo.fill';
-      case 'mp4':
-      case 'video':
-        return 'play.circle.fill';
-      default:
-        return 'doc.fill';
-    }
-  };
+  const extension = useMemo(() => getFileExtension(attachment.name), [attachment.name]);
+  const iconName = useMemo(() => getIconNameFromExtension(extension), [extension]);
+  const fileSizeText = useMemo(
+    () => formatFileSize(attachment.fileSizeBytes),
+    [attachment.fileSizeBytes]
+  );
 
-  const handlePressAttachment = useCallback(async () => {
-    // Navigate to attachment detail screen
-    router.push(`/(main)/(tabs)/(messages)/message/${messageId}/attachment/${attachment.id}`);
-  }, [attachment, messageId, router]);
+  const handlePress = useCallback(() => onPress(attachment), [attachment, onPress]);
+
+  // Background color based on cache status
+  // Cached: green tint, Not cached: default card background
+  const backgroundClass = isCached
+    ? 'bg-green-50 border-green-200'
+    : 'bg-card border-border';
 
   return (
     <Pressable
-      onPress={handlePressAttachment}
-      className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-3 active:opacity-70">
-      <Icon name={getIconName(attachment.type)} size={24} className="text-primary" />
+      onPress={handlePress}
+      className={`flex-row items-center gap-3 rounded-lg border p-3 active:opacity-70 ${backgroundClass}`}>
+      <Icon name={iconName} size={24} className="text-primary" />
       <View className="flex-1">
-        <Text variant="body" className="mb-1">
+        <Text variant="body" className="mb-1" numberOfLines={1}>
           {attachment.name}
         </Text>
         <Text variant="caption2" color="tertiary">
-          {attachment.type.toUpperCase()}
+          {extension.toUpperCase()} • {fileSizeText}
+          {isCached && ' • Cached'}
         </Text>
       </View>
       {isDownloading ? (
         <ActivityIndicator size="small" className="text-primary" />
+      ) : isCached ? (
+        <Icon name="checkmark.circle.fill" size={20} className="text-green-600" />
       ) : (
         <Icon name="arrow.down.circle" size={20} className="text-tertiary" />
       )}
@@ -202,34 +153,47 @@ function AttachmentItem({
 type AttachmentListProps = {
   attachments: Attachment[] | undefined;
   messageId: string;
+  onAttachmentPress: (attachment: Attachment) => void;
 };
 
-function AttachmentList({ attachments, messageId }: AttachmentListProps) {
-  const [isAttachmentInView, setIsAttachmentInView] = useState(false);
+function AttachmentList({ attachments, messageId, onAttachmentPress }: AttachmentListProps) {
+  const [cachedFilenames, setCachedFilenames] = useState<Set<string>>(new Set());
 
-  const hasAttachments = attachments && attachments.length > 0;
+  // Check cache status on mount and when attachments change
+  useEffect(() => {
+    const checkCache = () => {
+      const cached = getCachedFilenames();
+      setCachedFilenames(cached);
+    };
 
-  if (!hasAttachments) {
+    checkCache();
+
+    // Re-check cache periodically in case files are downloaded
+    const interval = setInterval(checkCache, 2000);
+    return () => clearInterval(interval);
+  }, [attachments]);
+
+  if (!attachments || attachments.length === 0) {
     return null;
   }
 
+  const cachedCount = attachments.filter((a) => cachedFilenames.has(a.name)).length;
+
   return (
     <>
-      <Text variant="heading" className="mt-[20]">
-        Attachments
+      <Text variant="heading" className="mt-5">
+        Attachments ({cachedCount}/{attachments.length} cached)
       </Text>
-      <View className="mt-[8] flex-row flex-wrap gap-[8]">
-        {attachments.map((attachment) => {
-          return (
-            <AttachmentItem
-              key={attachment.name + attachment.type}
-              attachment={attachment}
-              messageId={messageId}
-              isAttachmentInView={isAttachmentInView}
-              setIsAttachmentInView={setIsAttachmentInView}
-            />
-          );
-        })}
+      <View className="mt-2 gap-2">
+        {attachments.map((attachment) => (
+          <AttachmentItem
+            key={attachment.id}
+            attachment={attachment}
+            messageId={messageId}
+            isCached={cachedFilenames.has(attachment.name)}
+            onPress={onAttachmentPress}
+          />
+        ))}
       </View>
     </>
   );
@@ -237,51 +201,93 @@ function AttachmentList({ attachments, messageId }: AttachmentListProps) {
 
 const MemoizedAttachmentList = memo(AttachmentList);
 
-function MessageBody({ message }: { message: Message }) {
+type MessageBodyProps = {
+  message: Message;
+  onAttachmentPress: (attachment: Attachment) => void;
+};
+
+function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
   return (
     <View className="mt-4">
       <Text variant="title1" className="mb-4">
         {message.subject}
       </Text>
       <Text variant="body" className="mb-6 leading-6">
-        {message.message}
+        {message.preview}
       </Text>
-      <MemoizedAttachmentList attachments={message.attachments} messageId={message.id} />
+      <MemoizedAttachmentList
+        attachments={message.attachments}
+        messageId={message.id}
+        onAttachmentPress={onAttachmentPress}
+      />
     </View>
   );
 }
 
 export default function MessageScreen() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; messageData?: string }>();
   const router = useRouter();
 
-  // Get message data based on ID
-  const message = useMemo(() => {
-    return MESSAGE_DATA[params.id || '1'] || MESSAGE_DATA['1'];
-  }, [params.id]);
+  // Parse message data from route params
+  const message = useMemo<Message | null>(() => {
+    if (!params.messageData) return null;
+
+    try {
+      return JSON.parse(params.messageData) as Message;
+    } catch {
+      console.warn('[MessageScreen] Failed to parse message data');
+      return null;
+    }
+  }, [params.messageData]);
 
   // Dynamic screen options based on message
   const screenOptions = useMemo(
     () => ({
       headerShown: false,
-      title: message.subject,
+      title: message?.subject ?? 'Message',
     }),
-    [message.subject]
+    [message?.subject]
   );
 
-  const handlePressBack = () => {
+  const handlePressBack = useCallback(() => {
     router.back();
-  };
+  }, [router]);
+
+  const handleAttachmentPress = useCallback((attachment: Attachment) => {
+    // TODO: Phase 2 - Implement priority download
+    // For now, log the attachment press
+    console.log('[MessageScreen] Attachment pressed:', attachment.name, attachment.id);
+  }, []);
+
+  if (!message) {
+    return (
+      <>
+        <Stack.Screen options={screenOptions} />
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="flex-1 items-center justify-center p-4">
+            <Icon name="exclamationmark.triangle" size={48} className="text-destructive" />
+            <Text variant="body" color="tertiary" className="mt-2 text-center">
+              Message not found
+            </Text>
+            <Pressable onPress={handlePressBack} className="mt-4">
+              <Text variant="body" color="primary">
+                Go back
+              </Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
 
   return (
     <>
-      {/* Dynamic screen options */}
       <Stack.Screen options={screenOptions} />
       <SafeAreaView className="flex-1 bg-white" edges={['top']}>
         <ScrollView className="flex-1">
           <View className="p-4">
             <MessageHeader message={message} onBack={handlePressBack} />
-            <MessageBody message={message} />
+            <MessageBody message={message} onAttachmentPress={handleAttachmentPress} />
           </View>
         </ScrollView>
       </SafeAreaView>
