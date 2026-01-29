@@ -4,6 +4,11 @@ import * as fs from 'fs';
 
 const router = Router();
 
+/**
+ * Sleep utility for artificial download delays (testing only)
+ */
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Initialize storage on startup
 initializeStorage();
 
@@ -135,6 +140,13 @@ router.post('/download-binary', async (req: Request, res: Response) => {
 
     const userId = req.user?.sub || 'anonymous';
     console.log(`[Binary Download Request] User: ${userId}, File: ${filename}`);
+
+    // Optional delay for testing (e.g., ?delay=2000 for 2 second delay)
+    const delayMs = parseInt(req.query.delay as string, 10);
+    if (delayMs > 0) {
+      console.log(`[Binary Download] Applying ${delayMs}ms delay for testing`);
+      await sleep(delayMs);
+    }
 
     // Get file metadata first
     const metadata = getFileMetadata(filename);

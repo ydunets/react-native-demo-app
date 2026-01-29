@@ -15,6 +15,13 @@ import RNFetchBlob from 'react-native-blob-util';
 
 import { envConfig } from '@/configs/env-config';
 import { MAX_FILE_SIZE } from '@/constants/File';
+
+/**
+ * Testing delay for download queue.
+ * Set to positive value (ms) to simulate slow network for pause/resume testing.
+ * Set to 0 for production.
+ */
+const DOWNLOAD_DELAY_MS = 2000;
 import {
   fileExistsInCache,
   getCacheFilePath,
@@ -216,11 +223,12 @@ export const DownloadMessageAttachmentsProvider: React.FC<
         const expoPath = getCacheFilePath(attachmentId, filename);
         const nativePath = expoPath.replace(/^file:\/\//, '');
 
+        const delayParam = DOWNLOAD_DELAY_MS > 0 ? `?delay=${DOWNLOAD_DELAY_MS}` : '';
         const response = await RNFetchBlob.config({
           path: nativePath,
         }).fetch(
           'POST',
-          `${envConfig.fileServerBaseURL}/api/files/download-binary`,
+          `${envConfig.fileServerBaseURL}/api/files/download-binary${delayParam}`,
           {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
