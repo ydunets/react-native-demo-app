@@ -1,28 +1,78 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from "react";
+
+import { AttachmentInput, useMessageAttachments } from "./useMessageAttachments";
+
+import { useDownloadMessageAttachmentsContext } from "@/contexts/downloadMessageAttachments";
+
+import { useAppState } from "./useAppState";
+import { useNetInfo } from "./useNetInfo";
+import {
+  fileExistsInCache,
+} from '@/lib/files';
 
 
-import { useAppState } from './useAppState';
-import { useNetInfo } from './useNetInfo';
-import { useDownloadQueueActions } from '@/stores/downloadQueue';
-
-/**
- * Hook to access download queue context
- * Must be called inside DownloadMessageAttachmentsProvider
- *
- * @returns DownloadContextType with queue management API
- * @throws Error if used outside provider
- */
 export const useDownloadMessageAttachments = () => {
-  const { pauseProcessing, resumeProcessing } = useDownloadQueueActions();
+  const { addCommand, startProcessing, resetQueue } =
+    useDownloadMessageAttachmentsContext();
+  const { attachments } = useMessageAttachments();
   const { isAppActive } = useAppState();
   const { isConnected } = useNetInfo();
 
-  // Pause/resume based on network status
+  const addFilesToProcessingQueue = useCallback(
+    async (attachments: (AttachmentInput)[]) => {
+      resetQueue();
+      try {
+        for (const attachment of attachments) {
+          const filename = attachment?.name;
+
+          if (!filename) continue;
+
+          const exists = await fileExistsInCache(attachment.id, filename);
+
+          if (exists) continue;
+          try {
+            console.log(
+              "[File Processing] Adding file to queue",
+              attachment.name
+            );
+
+            addCommand({
+              filename: attachment.name,
+              id: attachment.id
+            });
+          } catch (error) {
+            console.error(
+              `[File Processing] Error queueing download for ${attachment.name}:`,
+              error
+            );
+          }
+        }
+        console.log("[File Processing] Finished adding files to queue");
+      } catch (error) {
+        console.error("[File Processing] Download process failed:", error);
+        return false;
+      }
+    },
+    [addCommand, resetQueue]
+  );
+
+  // Function to start downloads from the main thread
+  const startDownloads = useCallback(async () => {
+    if (!attachments.length) return;
+
+    await addFilesToProcessingQueue(attachments);
+    await startProcessing();
+  }, [attachments, addFilesToProcessingQueue, startProcessing]);
+
   useEffect(() => {
-    if (isConnected && isAppActive) {
-      resumeProcessing();
-    } else {
-      pauseProcessing();
+    if (!attachments.length) {
+      return;
     }
-  }, [isConnected, isAppActive, pauseProcessing, resumeProcessing]);
+
+    console.log("[File Processing] Attachments length", attachments.length);
+
+    if (isAppActive && isConnected) {
+      startDownloads();
+    }
+  }, [attachments.length, isAppActive, isConnected]);
 };

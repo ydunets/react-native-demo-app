@@ -6,7 +6,6 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { axiosClient } from '@/api/axios-client';
-import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
 import { MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
 import { useDownloadQueueStore, selectCompletedIdsAsSet } from '@/stores/downloadQueue';
@@ -33,6 +32,15 @@ interface MessageWithAttachments {
 interface Messages {
   messages?: MessageWithAttachments[];
 }
+
+export type AttachmentInput = {
+  id: string;
+  name: string;
+  url?: string;
+  fileUrl?: string;
+  fileSizeBytes: number;
+  messageId: string;
+};
 
 export interface UseMessageAttachmentsOptions {
   fetchAttachments?: () => Promise<AttachmentInput[]>;

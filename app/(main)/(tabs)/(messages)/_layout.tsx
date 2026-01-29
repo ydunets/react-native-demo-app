@@ -18,12 +18,6 @@ export default function MessagesLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
-        name="message/[id]/attachment/[attachmentId]"
-        options={{
-          headerShown: false,
-        }}
-      />
     </Stack>
   );
 }

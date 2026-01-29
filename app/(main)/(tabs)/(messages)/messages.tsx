@@ -126,7 +126,6 @@ function MessageList() {
   if (error) {
     return (
       <View className="flex-1 items-center justify-center p-4">
-        <Icon name="exclamationmark.triangle" size={48} className="text-destructive" />
         <Text variant="body" color="tertiary" className="mt-2 text-center">
           Failed to load messages
         </Text>
@@ -150,7 +149,6 @@ function MessageList() {
       data={messages}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
-      estimatedItemSize={100}
       contentContainerStyle={{ paddingBottom: 16 }}
     />
   );

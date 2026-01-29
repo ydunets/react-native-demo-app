@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
 import { getCachedFilenames, findCachedFilePath } from '@/lib/files';
 import type { Message, Attachment } from '@/types/message';
+import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = BYTES_PER_KB * 1024;
@@ -121,9 +122,7 @@ function AttachmentItem({ attachment, messageId, isCached, onPress }: Attachment
 
   // Background color based on cache status
   // Cached: green tint, Not cached: default card background
-  const backgroundClass = isCached
-    ? 'bg-green-50 border-green-200'
-    : 'bg-card border-border';
+  const backgroundClass = isCached ? 'bg-green-50 border-green-200' : 'bg-card border-border';
 
   return (
     <Pressable
@@ -225,6 +224,7 @@ function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
 }
 
 export default function MessageScreen() {
+  const { downloadFileFromMessage } = useDownloadMessageAttachmentsContext();
   const params = useLocalSearchParams<{ id: string; messageData?: string }>();
   const router = useRouter();
 
@@ -266,19 +266,19 @@ export default function MessageScreen() {
   const handleAttachmentPress = useCallback(
     async (attachment: Attachment) => {
       const { id: attachmentId, name: filename } = attachment;
-      console.log('[MessageScreen] Attachment pressed:', filename, attachmentId);
 
       // Check if already cached - findCachedFilePath returns actual path or null
-      const cachedPath = findCachedFilePath(attachmentId, filename);
-
-      if (cachedPath) {
-        // Open directly using the actual cached file path
-        console.log('[MessageScreen] Opening cached file:', filename, 'at:', cachedPath);
-        openPdfViewer(cachedPath, filename);
+      const path = findCachedFilePath(attachmentId, filename);
+      if (path && getFileExtension(filename) === 'pdf') {
+        openPdfViewer(path, filename);
         return;
       }
+
+      const result = await downloadFileFromMessage(attachment);
+      
+      openPdfViewer(result, filename);
     },
-    [message?.id, openPdfViewer]
+    [message?.id, openPdfViewer, downloadFileFromMessage]
   );
 
   if (!message) {
