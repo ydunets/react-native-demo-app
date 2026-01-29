@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
-import { clearAttachmentsCache } from '@/lib/files';
+import { clearAttachmentsCache, deleteCachedFile } from '@/lib/files';
 import { useInFlightAttachmentId } from '@/stores/downloadQueue';
 
 export interface CachedFile {
@@ -18,6 +18,7 @@ interface UseCachedFilesResult {
   isLoading: boolean;
   isClearing: boolean;
   clearCache: () => Promise<void>;
+  deleteFile: (attachmentId: string, filename: string) => Promise<void>;
 }
 
 /**
@@ -127,9 +128,28 @@ export const useCachedFiles = (): UseCachedFilesResult => {
     }
   }, []);
 
+  const deleteFile = useCallback(async (attachmentId: string, filename: string) => {
+    try {
+      const success = await deleteCachedFile(attachmentId, filename);
+      if (success) {
+        // Update local state to remove the deleted file
+        setFiles((prev) => {
+          const updated = prev.filter((f) => f.attachmentId !== attachmentId);
+          return updated;
+        });
+        setTotalSize((prev) => {
+          const deletedFile = files.find((f) => f.attachmentId === attachmentId);
+          return prev - (deletedFile?.size ?? 0);
+        });
+      }
+    } catch (error) {
+      console.error('[useCachedFiles] Failed to delete file:', error);
+    }
+  }, [files]);
+
   useEffect(() => {
     loadCachedFiles();
   }, [loadCachedFiles]);
 
-  return { files, totalSize, isLoading, isClearing, clearCache };
+  return { files, totalSize, isLoading, isClearing, clearCache, deleteFile };
 };

@@ -21,6 +21,7 @@ export default function PatientScreen() {
     isLoading: isCacheLoading,
     isClearing,
     clearCache,
+    deleteFile,
   } = useCachedFiles();
 
   const handleLogoutPress = async () => {
@@ -124,7 +125,13 @@ export default function PatientScreen() {
             ) : (
               <View className="gap-2">
                 {cachedFiles.map((file) => (
-                  <CachedFileItem key={file.attachmentId} name={file.name} size={file.size} />
+                  <CachedFileItem
+                    key={file.attachmentId}
+                    name={file.name}
+                    size={file.size}
+                    isInFlight={file.isInFlight}
+                    onDelete={() => deleteFile(file.attachmentId, file.name)}
+                  />
                 ))}
                 <Button
                   variant="plain"
