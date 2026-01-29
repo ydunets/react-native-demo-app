@@ -10,7 +10,7 @@ import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
 import { MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
 import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
 import { useDownloadQueueStore, selectCompletedIdsAsSet } from '@/stores/downloadQueue';
-import { useIsLoggedIn } from '@/stores/auth';
+import { useIsLoggedIn, useIsHydrated } from '@/stores/auth';
 
 const DEFAULT_LIMIT = 10;
 
@@ -155,12 +155,16 @@ const EMPTY_ATTACHMENTS: AttachmentInput[] = [];
 
 export const useMessageAttachments = () => {
   const isLoggedIn = useIsLoggedIn();
+  const isHydrated = useIsHydrated();
+
+  // Only fetch when: store is hydrated and user is logged in
+  const shouldFetch = isHydrated && isLoggedIn;
 
   const query = useQuery<AttachmentInput[], Error>({
     queryKey: ['message-attachments'],
     queryFn: () => fetchAndFilterAttachments(),
     staleTime: STALE_TIME,
-    enabled: isLoggedIn,
+    enabled: shouldFetch,
   });
 
   return {
