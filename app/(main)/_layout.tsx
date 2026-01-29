@@ -46,6 +46,15 @@ export default function MainLayout() {
             headerShown: false,
           }}
         />
+
+        {/* PDF Viewer modal */}
+        <Stack.Screen
+          name="pdf-viewer"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: true,
+          }}
+        />
       </Stack>
     </>
   );

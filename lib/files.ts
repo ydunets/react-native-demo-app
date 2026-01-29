@@ -146,6 +146,44 @@ export const fileExistsInCache = async (
 };
 
 /**
+ * Find actual cached file path for a filename
+ * Returns the full path if found, null otherwise
+ *
+ * @param attachmentId - Unique identifier for the attachment
+ * @param filename - Original filename
+ * @returns Full file path or null if not cached
+ */
+export const findCachedFilePath = (
+  attachmentId: string,
+  filename: string
+): string | null => {
+  try {
+    // First, check exact match with attachment ID
+    const exactPath = getCacheFilePath(attachmentId, filename);
+    const exactFile = new File(exactPath);
+    if (exactFile.exists) return exactPath;
+
+    // Fallback: search for any file with matching original filename
+    const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
+    const items = cacheDir.list();
+
+    for (const item of items) {
+      if (!(item instanceof File)) continue;
+
+      const parsed = parseCachedFilename(item.name);
+      if (parsed?.name === filename) {
+        return item.uri;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('[FileUtils] Error finding cached file:', error);
+    return null;
+  }
+};
+
+/**
  * Check if device has enough storage space
  * Uses new Paths.availableDiskSpace API
  *

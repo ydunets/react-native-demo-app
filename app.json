@@ -23,7 +23,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [["expo-font"], ["expo-screen-orientation"]],
+    "plugins": [
+      ["expo-font"],
+      ["expo-screen-orientation"],
+      [
+        "@config-plugins/react-native-blob-util", 
+        "@config-plugins/react-native-pdf"
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "your-project-id"

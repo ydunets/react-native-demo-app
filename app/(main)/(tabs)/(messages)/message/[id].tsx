@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
-import { getCachedFilenames } from '@/lib/files';
+import { getCachedFilenames, findCachedFilePath } from '@/lib/files';
 import type { Message, Attachment } from '@/types/message';
 
 const BYTES_PER_KB = 1024;
@@ -129,7 +129,7 @@ function AttachmentItem({ attachment, messageId, isCached, onPress }: Attachment
     <Pressable
       onPress={handlePress}
       className={`flex-row items-center gap-3 rounded-lg border p-3 active:opacity-70 ${backgroundClass}`}>
-      <Icon name={iconName} size={24} className="text-primary" />
+      <Icon name={iconName as any} size={24} className="text-primary" />
       <View className="flex-1">
         <Text variant="body" className="mb-1" numberOfLines={1}>
           {attachment.name}
@@ -253,11 +253,33 @@ export default function MessageScreen() {
     router.back();
   }, [router]);
 
-  const handleAttachmentPress = useCallback((attachment: Attachment) => {
-    // TODO: Phase 2 - Implement priority download
-    // For now, log the attachment press
-    console.log('[MessageScreen] Attachment pressed:', attachment.name, attachment.id);
-  }, []);
+  const openPdfViewer = useCallback(
+    (filePath: string, fileName: string) => {
+      router.push({
+        pathname: '/(main)/pdf-viewer',
+        params: { filePath, fileName },
+      });
+    },
+    [router]
+  );
+
+  const handleAttachmentPress = useCallback(
+    async (attachment: Attachment) => {
+      const { id: attachmentId, name: filename } = attachment;
+      console.log('[MessageScreen] Attachment pressed:', filename, attachmentId);
+
+      // Check if already cached - findCachedFilePath returns actual path or null
+      const cachedPath = findCachedFilePath(attachmentId, filename);
+
+      if (cachedPath) {
+        // Open directly using the actual cached file path
+        console.log('[MessageScreen] Opening cached file:', filename, 'at:', cachedPath);
+        openPdfViewer(cachedPath, filename);
+        return;
+      }
+    },
+    [message?.id, openPdfViewer]
+  );
 
   if (!message) {
     return (
@@ -265,7 +287,6 @@ export default function MessageScreen() {
         <Stack.Screen options={screenOptions} />
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
           <View className="flex-1 items-center justify-center p-4">
-            <Icon name="exclamationmark.triangle" size={48} className="text-destructive" />
             <Text variant="body" color="tertiary" className="mt-2 text-center">
               Message not found
             </Text>
