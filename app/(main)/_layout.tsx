@@ -2,6 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useIsLoggedIn } from '@/stores/auth';
 import { useEffect } from 'react';
+import { DownloadProgressOverlay } from '@/components/DownloadProgressOverlay';
 
 export default function MainLayout() {
   const isLoggedIn = useIsLoggedIn();
@@ -56,6 +57,9 @@ export default function MainLayout() {
           }}
         />
       </Stack>
+      
+      {/* Download progress overlay - shows above all screens */}
+      <DownloadProgressOverlay />
     </>
   );
 }

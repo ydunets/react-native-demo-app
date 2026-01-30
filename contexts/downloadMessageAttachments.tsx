@@ -12,6 +12,7 @@ import { getCacheFilePath, makeCacheDirectory } from '@/lib/files';
 import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
 import { DownloadCommand } from '@/stores/downloadQueue';
+import { useDownloadProgressStore } from '@/stores/downloadProgress';
 
 const DOWNLOAD_DELAY_MS = 2000;
 
@@ -63,11 +64,12 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
     setIsProcessing,
   } = useManageProcessingQueue();
   const authStore = useAuthStore();
+  const progressActions = useDownloadProgressStore((state) => state.actions);
 
   const downloadFile = async ({ filename, id }: DownloadCommand) => {
     const accessToken = authStore.tokens?.accessToken;
     if (!accessToken) {
-      console.warn('[File Download] No access token available, cannot download file');
+      console.warn('\x1b[33m', '[File Download] No access token available, cannot download file', '\x1b[0m');
       return undefined;
     }
 
@@ -78,38 +80,59 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       const expoPath = getCacheFilePath(id, filename);
       const nativePath = expoPath.replace(/^file:\/\//, '');
 
+      console.log('\x1b[36m', `[Download] Starting download: ${filename}`, '\x1b[0m');
+      
       const delayParam = DOWNLOAD_DELAY_MS > 0 ? `?delay=${DOWNLOAD_DELAY_MS}` : '';
+      let fileSize = 0;
       const response = await RNFetchBlob.config({
         path: nativePath,
-      }).fetch(
-        'POST',
-        `${envConfig.fileServerBaseURL}/api/files/download-binary${delayParam}`,
-        {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        JSON.stringify({ filename })
-      );
+      })
+        .fetch(
+          'POST',
+          `${envConfig.fileServerBaseURL}/api/files/download-binary${delayParam}`,
+          {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/octet-stream'
+          },
+          JSON.stringify({ filename })
+        )
+        .progress({ count: 0 }, (received, total) => {
+          const percent = total > 0 ? ((received / total) * 100).toFixed(1) : 0;
+          fileSize = total;
+          if(received != total)
+          console.log(
+            '\x1b[34m', `[Download Progress] ${filename} - ${percent}% (${received} / ${total} bytes)`, '\x1b[0m'
+          );
+        });
 
       const status = response.info().status;
+      console.log('\x1b[32m', `[Download] Completed: ${filename} - 100% (${fileSize} / ${fileSize} bytes)`, '\x1b[0m');
+      
       if (status < 200 || status >= 300) {
-        console.warn('[DownloadContext] Download failed', filename, status);
+        console.warn('\x1b[31m', `[DownloadContext] Download failed ${filename} - Status: ${status}`, '\x1b[0m');
         return undefined;
       }
 
       // File is already written to disk by RNFetchBlob - return the file path
+      console.log('\x1b[32m', `[Download] Success: ${filename} saved to cache`, '\x1b[0m');
       return expoPath;
     } catch (error) {
-      console.error('[DownloadContext] Error downloading file', filename, error);
+      console.error('\x1b[31m', `[DownloadContext] Error downloading file ${filename}`, '\x1b[0m', error);
       return undefined;
     }
   };
 
   const processQueue = async () => {
     setIsProcessing(true);
+    const totalFiles = queueRef.current.length;
+    let currentFileNumber = 0;
 
     while (queueRef.current.length) {
-      console.log('[File Processing] Processing queue remaining', queueRef.current.length, queueRef.current[0].filename);
+      currentFileNumber++;
+      progressActions.setProgress(currentFileNumber, totalFiles);
+      
+      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${queueRef.current.length} - ${queueRef.current[0].filename}`, '\x1b[0m');
       const result = await downloadFile(queueRef.current[0]);
 
       if (!result) {
@@ -119,18 +142,19 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       queueRef.current.shift();
 
       if (shouldStopProxy.shouldStop) {
-        console.log('[File Processing] Stop processing');
+        console.log('\x1b[35m', '[File Processing] Stop processing', '\x1b[0m');
         shouldStopProxy.shouldStop = false;
         break;
       }
     }
 
     setIsProcessing(false);
+    progressActions.resetProgress();
   };
 
   const resumeProcessing = async () => {
     setIsProcessing(true);
-    console.log('[File Processing] New processing queue started');
+    console.log('\x1b[32m', '[File Processing] New processing queue started', '\x1b[0m');
     await processQueue();
   };
 
@@ -141,7 +165,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       filename: attachment.name,
       id: attachment.id,
     });
-    console.log('[File Processing] Download File from attachment finished');
+    console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
     resumeProcessing();
     
     return filePath;
@@ -149,7 +173,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
 
   const startProcessing = async () => {
     if (!queueRef.current.length) {
-      console.log('[File Processing] No items in queue, processing not started');
+      console.log('\x1b[90m', '[File Processing] No items in queue, processing not started', '\x1b[0m');
       return;
     }
 

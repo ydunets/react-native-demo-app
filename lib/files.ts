@@ -254,7 +254,7 @@ export const deleteCachedFile = async (
     // Check if file exists before deleting
     if (file.exists) {
       await file.delete();
-      console.log('[FileUtils] Deleted corrupted file:', filePath);
+      console.log('[FileUtils] Deleted file from cache:', filename);
       return true;
     }
     return true;
