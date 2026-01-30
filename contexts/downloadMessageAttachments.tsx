@@ -1,37 +1,32 @@
 import {
   type PropsWithChildren,
   createContext,
-  use,
   useContext,
   useMemo,
-  useRef,
-  useState,
 } from 'react';
+import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';  
 
 import RNFetchBlob from 'react-native-blob-util';
 import { AttachmentInput } from '@/hooks/useMessageAttachments';
-import { findCachedFilePath, getCacheFilePath, makeCacheDirectory } from '@/lib/files';
+import { getCacheFilePath, makeCacheDirectory } from '@/lib/files';
 import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
+import { DownloadCommand } from '@/stores/downloadQueue';
 
 const DOWNLOAD_DELAY_MS = 2000;
 
-type DownloadMessageAttachmentsContextType = {
+
+export type DownloadMessageAttachmentsContextType = {
   isProcessing: boolean;
   addCommand: (command: DownloadCommand) => void;
   resumeProcessing: () => Promise<void>;
   resetQueue: () => void;
   pauseProcessing: () => Promise<void>;
   processQueue: () => Promise<void>;
-  downloadFile: (command: DownloadCommand) => Promise<boolean>;
+  downloadFile: (command: DownloadCommand) => Promise<string | undefined>;
   startProcessing: () => Promise<void>;
-  downloadFileFromMessage: (attachment: AttachmentInput) => Promise<boolean>;
+  downloadFileFromMessage: (attachment: AttachmentInput) => Promise<string | undefined>;
 };
-
-export interface DownloadCommand {
-  filename: string;
-  id: string;
-}
 
 export const DownloadMessageAttachmentsContext =
   createContext<DownloadMessageAttachmentsContextType>({
@@ -41,9 +36,9 @@ export const DownloadMessageAttachmentsContext =
     resetQueue: () => {},
     pauseProcessing: () => Promise.resolve(),
     processQueue: () => Promise.resolve(),
-    downloadFile: () => Promise.resolve(true),
+    downloadFile: () => Promise.resolve(undefined),
     startProcessing: () => Promise.resolve(),
-    downloadFileFromMessage: () => Promise.resolve(true),
+    downloadFileFromMessage: () => Promise.resolve(undefined),
   });
 
 export const useDownloadMessageAttachmentsContext = () => {
@@ -56,50 +51,6 @@ export const useDownloadMessageAttachmentsContext = () => {
   return context;
 };
 
-const useManageProcessingQueue = () => {
-  let queueRef = useRef<DownloadCommand[]>([]);
-  let { current: shouldStopProxy } = useRef(
-    new Proxy(
-      { shouldStop: false },
-      {
-        get: (target, prop) => {
-          return Reflect.get(target, prop);
-        },
-        set: (target, prop, value) => {
-          return Reflect.set(target, prop, value);
-        },
-      }
-    )
-  );
-
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const addCommand = (command: DownloadCommand) => {
-    queueRef.current.unshift(command);
-  };
-
-  const pauseProcessing = async () => {
-    shouldStopProxy.shouldStop = true;
-    setIsProcessing(false);
-
-    await Promise.resolve();
-  };
-
-  const resetQueue = () => {
-    queueRef.current = [];
-    shouldStopProxy.shouldStop = false;
-  };
-
-  return {
-    queueRef,
-    shouldStopProxy,
-    addCommand,
-    pauseProcessing,
-    isProcessing,
-    resetQueue,
-    setIsProcessing,
-  };
-};
 
 export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildren) => {
   const {
@@ -113,11 +64,11 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
   } = useManageProcessingQueue();
   const authStore = useAuthStore();
 
-  const downloadFile = async ({ filename, id }: {filename: string; id: string}) => {
+  const downloadFile = async ({ filename, id }: DownloadCommand) => {
     const accessToken = authStore.tokens?.accessToken;
     if (!accessToken) {
       console.warn('[File Download] No access token available, cannot download file');
-      return false;
+      return undefined;
     }
 
     try {
@@ -143,14 +94,14 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       const status = response.info().status;
       if (status < 200 || status >= 300) {
         console.warn('[DownloadContext] Download failed', filename, status);
-        return false;
+        return undefined;
       }
 
-      // File is already written to disk by RNFetchBlob
-      return true;
+      // File is already written to disk by RNFetchBlob - return the file path
+      return expoPath;
     } catch (error) {
       console.error('[DownloadContext] Error downloading file', filename, error);
-      return false;
+      return undefined;
     }
   };
 
@@ -158,7 +109,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
     setIsProcessing(true);
 
     while (queueRef.current.length) {
-      console.log('[File Processing] Processing queue remaining', queueRef.current.length);
+      console.log('[File Processing] Processing queue remaining', queueRef.current.length, queueRef.current[0].filename);
       const result = await downloadFile(queueRef.current[0]);
 
       if (!result) {
@@ -174,8 +125,6 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       }
     }
 
-    console.log('[File Processing] Processing queue finished');
-
     setIsProcessing(false);
   };
 
@@ -187,20 +136,15 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
 
   const downloadFileFromMessage = async (attachment: AttachmentInput) => {
     await pauseProcessing();
-    console.log('[File Processing] Processing paused');
 
-    const result = await downloadFile({
+    const filePath = await downloadFile({
       filename: attachment.name,
       id: attachment.id,
     });
     console.log('[File Processing] Download File from attachment finished');
-
-    console.log('[File Processing] Processing resumed');
     resumeProcessing();
-
-    console.log("downloadFileFromMessage returning", getCacheFilePath(attachment.id, attachment.name));
     
-    return findCachedFilePath(attachment.id, attachment.name);
+    return filePath;
   };
 
   const startProcessing = async () => {

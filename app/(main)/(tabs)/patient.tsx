@@ -8,6 +8,7 @@ import { Icon } from '@/components/nativewindui/Icon';
 import { ActivityIndicator } from '@/components/nativewindui/ActivityIndicator';
 import { CachedFileItem } from '@/components/CachedFileItem';
 import { useAuthContext } from '@/contexts/auth';
+import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
 import { useUser } from '@/stores/auth';
 import { useCachedFiles } from '@/hooks/useCachedFiles';
 import { formatFileSize } from '@/lib/files';
@@ -15,6 +16,7 @@ import { formatFileSize } from '@/lib/files';
 export default function PatientScreen() {
   const { logout } = useAuthContext();
   const user = useUser();
+  const downloadContext = useDownloadMessageAttachmentsContext();
   const {
     files: cachedFiles,
     totalSize,
@@ -22,7 +24,7 @@ export default function PatientScreen() {
     isClearing,
     clearCache,
     deleteFile,
-  } = useCachedFiles();
+  } = useCachedFiles(downloadContext);
 
   const handleLogoutPress = async () => {
     await logout();

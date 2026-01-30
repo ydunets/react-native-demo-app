@@ -1,11 +1,6 @@
 export interface DownloadCommand {
   id: string;
-  attachmentId: string;
   filename: string;
-  fileUrl: string;
-  fileSizeBytes: number;
-  messageId: string;
-  timestamp: number;
 }
 
 export interface DownloadQueueState {

@@ -3,6 +3,7 @@ import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
 import { clearAttachmentsCache, deleteCachedFile } from '@/lib/files';
 import { useInFlightAttachmentId } from '@/stores/downloadQueue';
+import type { DownloadMessageAttachmentsContextType } from '@/contexts/downloadMessageAttachments';
 
 export interface CachedFile {
   name: string;
@@ -51,7 +52,7 @@ const parseCachedFilename = (
  * Hook that scans the attachments cache directory
  * and returns metadata for all cached files.
  */
-export const useCachedFiles = (): UseCachedFilesResult => {
+export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsContextType): UseCachedFilesResult => {
   const [files, setFiles] = useState<CachedFile[]>([]);
   const [totalSize, setTotalSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,6 +119,14 @@ export const useCachedFiles = (): UseCachedFilesResult => {
   const clearCache = useCallback(async () => {
     setIsClearing(true);
     try {
+      // First, stop any ongoing downloads to prevent race conditions
+      if (downloadContext) {
+        await downloadContext.pauseProcessing();
+        downloadContext.resetQueue();
+        console.log('[useCachedFiles] Download queue paused and reset');
+      }
+      
+      // Now safe to clear the cache
       await clearAttachmentsCache();
       setFiles([]);
       setTotalSize(0);
@@ -126,7 +135,7 @@ export const useCachedFiles = (): UseCachedFilesResult => {
     } finally {
       setIsClearing(false);
     }
-  }, []);
+  }, [downloadContext]);
 
   const deleteFile = useCallback(async (attachmentId: string, filename: string) => {
     try {
