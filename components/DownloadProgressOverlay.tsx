@@ -1,15 +1,16 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useState } from 'react';
-import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
-import { useTotalFiles, useCurrentFile, useRemainingFiles } from '@/stores/downloadProgress';
+import { useTotalFiles, useCurrentFile, useRemainingFiles, useCurrentFilename } from '@/stores/downloadProgress';
 import { CircularProgress } from './CircularProgress';
 
 export function DownloadProgressOverlay() {
-  const { isProcessing } = useDownloadMessageAttachmentsContext();
   const totalFiles = useTotalFiles();
   const currentFile = useCurrentFile();
   const remainingFiles = useRemainingFiles();
+  const currentFilename = useCurrentFilename();
   const [isMinimized, setIsMinimized] = useState(true);
+  const progress = totalFiles > 0 ? currentFile / totalFiles : 0;
+  const isProcessing = totalFiles > 0;
 
   if (!isProcessing) {
     // Reset to minimized state when downloads complete
@@ -21,8 +22,6 @@ export function DownloadProgressOverlay() {
 
   // Show minimized indicator in bottom-right corner by default
   if (isMinimized) {
-    const progress = totalFiles > 0 ? currentFile / totalFiles : 0;
-    
     return (
       <Pressable 
         style={styles.minimizedContainer}
@@ -45,13 +44,18 @@ export function DownloadProgressOverlay() {
     );
   }
 
-  const progress = totalFiles > 0 ? currentFile / totalFiles : 0;
-
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.text}>Downloading files...</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.text}>Downloading files...</Text>
+            {currentFilename && (
+              <Text style={styles.filenameText} numberOfLines={1}>
+                {currentFilename}
+              </Text>
+            )}
+          </View>
           <Pressable 
             onPress={() => setIsMinimized(true)}
             hitSlop={8}
@@ -110,8 +114,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  filenameText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
   progressSection: {
     alignItems: 'center',
