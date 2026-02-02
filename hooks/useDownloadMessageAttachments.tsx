@@ -1,25 +1,28 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from 'react';
 
-import { AttachmentInput, useMessageAttachments } from "./useMessageAttachments";
+import { AttachmentInput, useMessageAttachments } from './useMessageAttachments';
 
-import { useDownloadMessageAttachmentsContext } from "@/contexts/downloadMessageAttachments";
+import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
 
-import { useAppState } from "./useAppState";
-import { useNetInfo } from "./useNetInfo";
-import {
-  fileExistsInCache,
-} from '@/lib/files';
-
+import { useAppState } from './useAppState';
+import { useNetInfo } from './useNetInfo';
+import { fileExistsInCache } from '@/lib/files';
+import { useIsLoggedIn } from '@/stores/auth';
+import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';
 
 export const useDownloadMessageAttachments = () => {
-  const { addCommand, startProcessing, resetQueue } =
+  const {
+    isProcessing,
+  } = useManageProcessingQueue();
+  const { addCommand, startProcessing, resetQueue, cancelCurrentDownload } =
     useDownloadMessageAttachmentsContext();
   const { attachments } = useMessageAttachments();
   const { isAppActive } = useAppState();
   const { isConnected } = useNetInfo();
+  const isAuthenticated = useIsLoggedIn();
 
   const addFilesToProcessingQueue = useCallback(
-    async (attachments: (AttachmentInput)[]) => {
+    async (attachments: AttachmentInput[]) => {
       resetQueue();
       try {
         for (const attachment of attachments) {
@@ -27,18 +30,14 @@ export const useDownloadMessageAttachments = () => {
 
           if (!filename) continue;
 
-          const exists = await fileExistsInCache(attachment.id, filename);
+          const exists = fileExistsInCache(filename);
 
           if (exists) continue;
           try {
-            console.log(
-              "[File Processing] Adding file to queue",
-              attachment.name
-            );
+            console.log('[File Processing] Adding file to queue', attachment.name);
 
             addCommand({
               filename: attachment.name,
-              id: attachment.id
             });
           } catch (error) {
             console.error(
@@ -47,32 +46,46 @@ export const useDownloadMessageAttachments = () => {
             );
           }
         }
-        console.log("[File Processing] Finished adding files to queue");
+        console.log('[File Processing] Finished adding files to queue');
       } catch (error) {
-        console.error("[File Processing] Download process failed:", error);
+        console.error('[File Processing] Download process failed:', error);
         return false;
       }
     },
     [addCommand, resetQueue]
   );
 
-  // Function to start downloads from the main thread
   const startDownloads = useCallback(async () => {
-    if (!attachments.length) return;
-
-    await addFilesToProcessingQueue(attachments);
-    await startProcessing();
-  }, [attachments, addFilesToProcessingQueue, startProcessing]);
-
-  useEffect(() => {
     if (!attachments.length) {
+      console.log('[File Processing] No attachments to process');
+      return;
+    }
+    if (isProcessing.current) {
+      console.log('[File Processing] Downloads already in progress');
       return;
     }
 
-    console.log("[File Processing] Attachments length", attachments.length);
-
-    if (isAppActive && isConnected) {
-      startDownloads();
+    if (!isAuthenticated) {
+      console.log('[File Processing] Not authenticated, downloads paused');
+      return;
     }
-  }, [attachments.length, isAppActive, isConnected]);
+    
+    if(!isAppActive) {
+      console.log('[File Processing] App is not active, downloads paused');
+      return;
+    }
+
+    if(!isConnected) {
+      cancelCurrentDownload();
+      console.log('[File Processing] No internet connection, downloads paused');
+      return;
+    }
+
+    await addFilesToProcessingQueue(attachments);
+    await startProcessing();
+  }, [attachments, isProcessing, isAuthenticated, isAppActive, isConnected, addFilesToProcessingQueue, startProcessing, cancelCurrentDownload]);
+
+  useEffect(() => {
+    startDownloads()
+  }, [startDownloads]);
 };

@@ -1,4 +1,5 @@
 import {
+  useRef,
   type PropsWithChildren,
   createContext,
   useContext,
@@ -6,19 +7,17 @@ import {
 } from 'react';
 import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';  
 
-import RNFetchBlob from 'react-native-blob-util';
-import { AttachmentInput } from '@/hooks/useMessageAttachments';
-import { getCacheFilePath, makeCacheDirectory } from '@/lib/files';
+import RNFetchBlob, { type FetchBlobResponse, type StatefulPromise } from 'react-native-blob-util';
+import { getCacheFilePath, makeCacheDirectory, deleteCachedFile, fileExistsInCache } from '@/lib/files';
 import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
 import { DownloadCommand } from '@/stores/downloadQueue';
 import { useDownloadProgressStore } from '@/stores/downloadProgress';
+import { Attachment } from '@/types';
 
 const DOWNLOAD_DELAY_MS = 2000;
 
-
 export type DownloadMessageAttachmentsContextType = {
-  isProcessing: boolean;
   addCommand: (command: DownloadCommand) => void;
   resumeProcessing: () => Promise<void>;
   resetQueue: () => void;
@@ -26,12 +25,12 @@ export type DownloadMessageAttachmentsContextType = {
   processQueue: () => Promise<void>;
   downloadFile: (command: DownloadCommand) => Promise<string | undefined>;
   startProcessing: () => Promise<void>;
-  downloadFileFromMessage: (attachment: AttachmentInput) => Promise<string | undefined>;
+  downloadFileFromMessage: (attachment: Attachment) => Promise<string | undefined>;
+  cancelCurrentDownload: () => void;
 };
 
 export const DownloadMessageAttachmentsContext =
   createContext<DownloadMessageAttachmentsContextType>({
-    isProcessing: false,
     addCommand: () => {},
     resumeProcessing: () => Promise.resolve(),
     resetQueue: () => {},
@@ -40,6 +39,7 @@ export const DownloadMessageAttachmentsContext =
     downloadFile: () => Promise.resolve(undefined),
     startProcessing: () => Promise.resolve(),
     downloadFileFromMessage: () => Promise.resolve(undefined),
+    cancelCurrentDownload: () => Promise.resolve(),
   });
 
 export const useDownloadMessageAttachmentsContext = () => {
@@ -61,30 +61,38 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
     pauseProcessing,
     isProcessing,
     resetQueue,
-    setIsProcessing,
   } = useManageProcessingQueue();
-  const authStore = useAuthStore();
   const progressActions = useDownloadProgressStore((state) => state.actions);
+  const currentTaskRef = useRef<StatefulPromise<FetchBlobResponse>>(null);
 
-  const downloadFile = async ({ filename, id }: DownloadCommand) => {
-    const accessToken = authStore.tokens?.accessToken;
+  const downloadFile = async ({ filename }: Omit<DownloadCommand,"id">) => {
+    // Get current auth state (same pattern as axios interceptor)
+    const { tokens } = useAuthStore.getState();
+    const accessToken = tokens?.accessToken;
+
     if (!accessToken) {
-      console.warn('\x1b[33m', '[File Download] No access token available, cannot download file', '\x1b[0m');
+      console.warn(
+        '\x1b[33m',
+        '[File Download] No access token available, cannot download file',
+        '\x1b[0m'
+      );
       return undefined;
     }
+
+    const expoPath = getCacheFilePath(filename);
 
     try {
       await makeCacheDirectory();
 
       // Get expo-file-system path and convert to native path for RNFetchBlob
-      const expoPath = getCacheFilePath(id, filename);
       const nativePath = expoPath.replace(/^file:\/\//, '');
 
       console.log('\x1b[36m', `[Download] Starting download: ${filename}`, '\x1b[0m');
-      
+
       const delayParam = DOWNLOAD_DELAY_MS > 0 ? `?delay=${DOWNLOAD_DELAY_MS}` : '';
       let fileSize = 0;
-      const response = await RNFetchBlob.config({
+
+      const downloadFileTask = RNFetchBlob.config({
         path: nativePath,
       })
         .fetch(
@@ -93,47 +101,64 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
           {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'Accept': 'application/octet-stream'
+            Accept: 'application/octet-stream',
           },
           JSON.stringify({ filename })
         )
         .progress({ count: 0 }, (received, total) => {
           const percent = total > 0 ? ((received / total) * 100).toFixed(1) : 0;
           fileSize = total;
-          if(received != total)
-          console.log(
-            '\x1b[34m', `[Download Progress] ${filename} - ${percent}% (${received} / ${total} bytes)`, '\x1b[0m'
-          );
+          if (received !== total)
+            console.log(
+              '\x1b[34m',
+              `[Download Progress] ${filename} - ${percent}% (${received} / ${total} bytes)`,
+              '\x1b[0m'
+            );
         });
 
-      const status = response.info().status;
-      console.log('\x1b[32m', `[Download] Completed: ${filename} - 100% (${fileSize} / ${fileSize} bytes)`, '\x1b[0m');
-      
-      if (status < 200 || status >= 300) {
-        console.warn('\x1b[31m', `[DownloadContext] Download failed ${filename} - Status: ${status}`, '\x1b[0m');
-        return undefined;
-      }
+      // Store task reference for potential cancellation
+      currentTaskRef.current = downloadFileTask;
 
-      // File is already written to disk by RNFetchBlob - return the file path
-      console.log('\x1b[32m', `[Download] Success: ${filename} saved to cache`, '\x1b[0m');
+      await downloadFileTask;
+      console.log(
+        '\x1b[32m',
+        `[Download] Completed: ${filename} - 100% (${fileSize} / ${fileSize} bytes)`,
+        '\x1b[0m'
+      );
+      currentTaskRef.current = null;
+      console.log(
+        'Downloaded file to: ',
+        expoPath,
+        ' - native path: ',
+        nativePath,
+        ' - cache path:'
+      );
       return expoPath;
     } catch (error) {
-      console.error('\x1b[31m', `[DownloadContext] Error downloading file ${filename}`, '\x1b[0m', error);
+      console.warn(
+        '\x1b[31m',
+        `[DownloadContext] Error downloading file ${filename}`,
+        '\x1b[0m',
+        error
+      );
+      await deleteCachedFile(filename);
+      currentTaskRef.current = null;
       return undefined;
     }
   };
 
   const processQueue = async () => {
-    setIsProcessing(true);
+    isProcessing.current = true;
     const totalFiles = queueRef.current.length;
-    let currentFileNumber = 0;
 
     while (queueRef.current.length) {
-      currentFileNumber++;
-      progressActions.setProgress(currentFileNumber, totalFiles);
+      const currentCommand = queueRef.current[0];
+      const currentFileNumber = totalFiles - queueRef.current.length + 1;
       
-      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${queueRef.current.length} - ${queueRef.current[0].filename}`, '\x1b[0m');
-      const result = await downloadFile(queueRef.current[0]);
+      progressActions.setProgress(currentFileNumber, totalFiles, currentCommand.filename);
+      
+      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${queueRef.current.length} - ${currentCommand.filename}`, '\x1b[0m');
+      const result = await downloadFile(currentCommand);
 
       if (!result) {
         break;
@@ -148,30 +173,48 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       }
     }
 
-    setIsProcessing(false);
+    isProcessing.current = false;
     progressActions.resetProgress();
   };
 
   const resumeProcessing = async () => {
-    setIsProcessing(true);
+    isProcessing.current = true;
     console.log('\x1b[32m', '[File Processing] New processing queue started', '\x1b[0m');
     await processQueue();
   };
 
-  const downloadFileFromMessage = async (attachment: AttachmentInput) => {
+  const downloadFileFromMessage = async (attachment: Attachment) => {
+    const { name: filename } = attachment;
+
+    // Check if file already exists in cache
+    const existsInCache = fileExistsInCache(filename);
+    if (existsInCache) {
+      console.log('\x1b[32m', `[File Processing] File already cached, skipping download: ${filename}`, '\x1b[0m');
+      return getCacheFilePath(filename);
+    }
+
     await pauseProcessing();
 
     const filePath = await downloadFile({
-      filename: attachment.name,
-      id: attachment.id,
+      filename,
     });
+
+    queueRef.current = queueRef.current.filter(command => command.filename !== filename);
+
     console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
-    resumeProcessing();
+
+    await resumeProcessing();
     
     return filePath;
   };
 
   const startProcessing = async () => {
+    // Synchronous check using ref to prevent race condition
+    if (isProcessing.current) {
+      console.log('\x1b[33m', '[File Processing] Already processing (blocked by ref), skipping start', '\x1b[0m');
+      return;
+    }
+
     if (!queueRef.current.length) {
       console.log('\x1b[90m', '[File Processing] No items in queue, processing not started', '\x1b[0m');
       return;
@@ -180,9 +223,14 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
     await processQueue();
   };
 
+  const cancelCurrentDownload = async () => {
+    await currentTaskRef.current?.cancel(() => {
+      console.log('\x1b[31m', '[File Processing] Download cancelled', '\x1b[0m');
+    })
+  }
+
   const value = useMemo(
     () => ({
-      isProcessing,
       addCommand,
       resumeProcessing,
       resetQueue,
@@ -191,8 +239,9 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       downloadFile,
       startProcessing,
       downloadFileFromMessage,
+      cancelCurrentDownload
     }),
-    [isProcessing]
+    [isProcessing.current]
   );
 
   return (

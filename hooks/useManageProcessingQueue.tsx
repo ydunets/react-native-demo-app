@@ -1,23 +1,11 @@
 import { DownloadCommand } from "@/stores/downloadQueue";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 const useManageProcessingQueue = () => {
   let queueRef = useRef<DownloadCommand[]>([]);
-  let { current: shouldStopProxy } = useRef(
-    new Proxy(
-      { shouldStop: false },
-      {
-        get: (target, prop) => {
-          return Reflect.get(target, prop);
-        },
-        set: (target, prop, value) => {
-          return Reflect.set(target, prop, value);
-        }
-      }
-    )
-  );
-
-  const [isProcessing, setIsProcessing] = useState(false);
+  let isProcessing = useRef(false);
+  
+  let { current: shouldStopProxy } = useRef({ shouldStop: false });
 
   const addCommand = (command: DownloadCommand) => {
     queueRef.current.push(command);
@@ -25,7 +13,7 @@ const useManageProcessingQueue = () => {
 
   const pauseProcessing = async () => {
     shouldStopProxy.shouldStop = true;
-    setIsProcessing(false);
+    isProcessing.current = false;
 
     await Promise.resolve();
   };
@@ -41,8 +29,7 @@ const useManageProcessingQueue = () => {
     addCommand,
     pauseProcessing,
     isProcessing,
-    resetQueue,
-    setIsProcessing
+    resetQueue
   };
 };
 
