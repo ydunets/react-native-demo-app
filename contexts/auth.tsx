@@ -5,12 +5,14 @@
 
 import React, { ReactNode } from 'react';
 import * as AuthSession from 'expo-auth-session';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIsLoggedIn, useAuthActions } from '@/stores/auth';
 import type { UserProfile } from '@/stores/auth';
 import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { envConfig } from '@/configs/env-config';
 import { useNonce } from '@/hooks/useNonce';
 import { jwtDecode } from '@/lib/jwtDecode';
+import { MESSAGE_ATTACHMENTS } from '@/hooks/useMessageAttachments';
 
 /**
  * Auth context value type
@@ -46,6 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isLoggedIn = useIsLoggedIn();
   const { logoutFromKeycloak, setTokens, setUser } = useAuthActions();
   const { isRefreshing, canUseTokens } = useRefreshTokens();
+  const queryClient = useQueryClient();
   const discoveryUrl = `${envConfig.keycloakURL}/realms/${envConfig.realm}`;
   const discovery = AuthSession.useAutoDiscovery(discoveryUrl);
   const [authRequestError, setAuthRequestError] = React.useState<string | null>(null);
@@ -105,8 +108,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Decode ID token to extract user information
           try {
             const decodedToken = jwtDecode(tokenResponse.idToken);
-            console.log('Decoded ID Token:', decodedToken);
-
             // Extract user profile from token
             const userProfile: UserProfile = {
               id: decodedToken.sub || '',
@@ -117,8 +118,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 decodedToken.preferred_username ||
                 '',
             };
-
-            console.log('User Profile:', userProfile);
 
             // Store tokens and user info
             setTokens({
@@ -153,6 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Starting logout...');
 
+      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS });
       // Call Keycloak logout - this invalidates server session
       await logoutFromKeycloak();
 
@@ -161,6 +161,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Error during logout:', error);
       // Force local logout even if Keycloak logout fails
       await logoutFromKeycloak();
+      
+      // Still invalidate cache on error
+      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS });
     }
   };
 
@@ -194,13 +197,4 @@ export const useAuthContext = (): AuthContextValue => {
   }
 
   return context;
-};
-
-/**
- * Custom hook to use OAuth discovery
- * Provides access to discovered endpoints
- */
-export const useOAuthDiscovery = (): AuthSession.DiscoveryDocument | null => {
-  const { discovery } = useAuthContext();
-  return discovery;
 };
