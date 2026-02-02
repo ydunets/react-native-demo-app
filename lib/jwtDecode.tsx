@@ -5,16 +5,16 @@ function base64Decode(str: string): string {
   // Add padding if needed
   const padding = '='.repeat((4 - (str.length % 4)) % 4);
   const base64 = str + padding;
-  
+
   // Use atob for base64 decoding (available in React Native)
   try {
     return decodeURIComponent(
       atob(base64)
         .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
-  } catch (error) {
+  } catch {
     throw new Error('Invalid base64 string');
   }
 }

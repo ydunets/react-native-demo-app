@@ -38,7 +38,8 @@ export default function AttachmentDetailScreen() {
           </View>
           <View className="mt-4 rounded-lg border border-border bg-card p-4">
             <Text variant="body">
-              This screen displays attachment details. In a real app, this would show the attachment content (PDF viewer, image viewer, video player, etc.).
+              This screen displays attachment details. In a real app, this would show the attachment
+              content (PDF viewer, image viewer, video player, etc.).
             </Text>
           </View>
           <View className="mt-4">
@@ -51,4 +52,3 @@ export default function AttachmentDetailScreen() {
     </SafeAreaView>
   );
 }
-

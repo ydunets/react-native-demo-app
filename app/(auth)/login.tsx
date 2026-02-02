@@ -44,7 +44,7 @@ export default function LoginScreen() {
             disabled={authContext.isAuthRequestLoading}
             onLongPress={async () => {
               router.replace(RootPath.Sitemap);
-            }} 
+            }}
             onPress={async () => {
               await authContext.login();
               router.replace(RootPath.HomeScreen);

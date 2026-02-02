@@ -1,0 +1,33 @@
+import { useEffect } from 'react';
+
+
+import { useAppState } from './useAppState';
+import { useNetInfo } from './useNetInfo';
+import { useDownloadQueueStore } from '@/store/downloadQueueStore';
+
+/**
+ * Hook to access download queue context
+ * Must be called inside DownloadMessageAttachmentsProvider
+ *
+ * @returns DownloadContextType with queue management API
+ * @throws Error if used outside provider
+ */
+export const useDownloadMessageAttachments = () => {
+  const {pauseProcessing, resumeProcessing} = useDownloadQueueStore(state => {
+    return {
+      resumeProcessing: state.resumeProcessing,
+      pauseProcessing: state.pauseProcessing,
+    };
+  });
+  const { isAppActive } = useAppState();
+  const { isConnected } = useNetInfo();
+
+  // Pause/resume based on network status
+  useEffect(() => {
+    if (isConnected && isAppActive) {
+      resumeProcessing();
+    } else {
+      pauseProcessing();
+    }
+  }, [isConnected, isAppActive, pauseProcessing, resumeProcessing]);
+};

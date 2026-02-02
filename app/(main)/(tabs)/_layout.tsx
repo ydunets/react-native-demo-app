@@ -5,8 +5,6 @@ import { useColorScheme } from '@/lib/useColorScheme';
 
 export default function TabsLayout() {
   const { colors } = useColorScheme();
-  const { isDarkColorScheme } = useColorScheme(); 
-  const tabBarIconColor = isDarkColorScheme ? colors.primary : colors.secondary;
   return (
     <>
       <StatusBar style="dark" />
@@ -38,11 +36,7 @@ export default function TabsLayout() {
           options={{
             tabBarShowLabel: false,
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? 'home' : 'home-outline'}
-                size={28}
-                color={color}
-              />
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={28} color={color} />
             ),
           }}
         />
@@ -53,11 +47,7 @@ export default function TabsLayout() {
           options={{
             tabBarShowLabel: false,
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? 'mail' : 'mail-outline'}
-                size={28}
-                color={color}
-              />
+              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={28} color={color} />
             ),
           }}
         />
@@ -82,11 +72,7 @@ export default function TabsLayout() {
           options={{
             tabBarShowLabel: false,
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? 'person' : 'person-outline'}
-                size={28}
-                color={color}
-              />
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={28} color={color} />
             ),
           }}
         />
@@ -94,4 +80,3 @@ export default function TabsLayout() {
     </>
   );
 }
-

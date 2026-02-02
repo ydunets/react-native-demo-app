@@ -4,9 +4,7 @@
     "slug": "expo-app-presentation",
     "version": "1.0.0",
     "scheme": "expo-app-presentation",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTabletMode": true,
@@ -22,14 +20,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "expo-font"
-      ],
-      [
-        "expo-screen-orientation"
-      ]
-    ],
+    "plugins": [["expo-font"], ["expo-screen-orientation"]],
     "extra": {
       "eas": {
         "projectId": "your-project-id"
