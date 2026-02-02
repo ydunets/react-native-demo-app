@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, useMemo, useEffect } from 'react';
+import { memo, useCallback, useState, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -6,7 +6,12 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
-import { getCachedFilenames, findCachedFilePath } from '@/lib/files';
+import {
+  getCachedFilenames,
+  getCachedFileSize,
+  getCacheFilePath,
+  fileExistsInCache,
+} from '@/lib/files';
 import type { Message, Attachment } from '@/types/message';
 import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
 
@@ -103,13 +108,13 @@ function MessageHeader({ message, onBack }: { message: Message; onBack: () => vo
 
 type AttachmentItemProps = {
   attachment: Attachment;
-  messageId: string;
-  isCached: boolean;
   onPress: (attachment: Attachment) => void;
 };
 
-function AttachmentItem({ attachment, messageId, isCached, onPress }: AttachmentItemProps) {
+function AttachmentItem({ attachment, onPress }: AttachmentItemProps) {
   const [isDownloading] = useState(false);
+  const isInMobileCache = getCachedFilenames().has(attachment.filename);
+  const isCache = isInMobileCache && attachment.fileSizeBytes === getCachedFileSize(getCacheFilePath(attachment.filename));
 
   const extension = useMemo(() => getFileExtension(attachment.name), [attachment.name]);
   const iconName = useMemo(() => getIconNameFromExtension(extension), [extension]);
@@ -122,7 +127,7 @@ function AttachmentItem({ attachment, messageId, isCached, onPress }: Attachment
 
   // Background color based on cache status
   // Cached: green tint, Not cached: default card background
-  const backgroundClass = isCached ? 'bg-green-50 border-green-200' : 'bg-card border-border';
+  const backgroundClass = isCache ? 'bg-green-50 border-green-200' : 'bg-card border-border';
 
   return (
     <Pressable
@@ -135,13 +140,10 @@ function AttachmentItem({ attachment, messageId, isCached, onPress }: Attachment
         </Text>
         <Text variant="caption2" color="tertiary">
           {extension.toUpperCase()} • {fileSizeText}
-          {isCached && ' • Cached'}
         </Text>
       </View>
       {isDownloading ? (
         <ActivityIndicator size="small" className="text-primary" />
-      ) : isCached ? (
-        <Icon name="checkmark.circle.fill" size={20} className="text-green-600" />
       ) : (
         <Icon name="arrow.down.circle" size={20} className="text-tertiary" />
       )}
@@ -155,41 +157,18 @@ type AttachmentListProps = {
   onAttachmentPress: (attachment: Attachment) => void;
 };
 
-function AttachmentList({ attachments, messageId, onAttachmentPress }: AttachmentListProps) {
-  const [cachedFilenames, setCachedFilenames] = useState<Set<string>>(new Set());
-
-  // Check cache status on mount and when attachments change
-  useEffect(() => {
-    const checkCache = () => {
-      const cached = getCachedFilenames();
-      setCachedFilenames(cached);
-    };
-
-    checkCache();
-
-    // Re-check cache periodically in case files are downloaded
-    const interval = setInterval(checkCache, 2000);
-    return () => clearInterval(interval);
-  }, [attachments]);
-
+function AttachmentList({ attachments, onAttachmentPress }: AttachmentListProps) {
   if (!attachments || attachments.length === 0) {
     return null;
   }
 
-  const cachedCount = attachments.filter((a) => cachedFilenames.has(a.name)).length;
-
   return (
     <>
-      <Text variant="heading" className="mt-5">
-        Attachments ({cachedCount}/{attachments.length} cached)
-      </Text>
       <View className="mt-2 gap-2">
         {attachments.map((attachment) => (
           <AttachmentItem
             key={attachment.id}
             attachment={attachment}
-            messageId={messageId}
-            isCached={cachedFilenames.has(attachment.name)}
             onPress={onAttachmentPress}
           />
         ))}
@@ -226,6 +205,7 @@ function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
 export default function MessageScreen() {
   const { downloadFileFromMessage } = useDownloadMessageAttachmentsContext();
   const params = useLocalSearchParams<{ id: string; messageData?: string }>();
+
   const router = useRouter();
 
   // Parse message data from route params
@@ -254,10 +234,10 @@ export default function MessageScreen() {
   }, [router]);
 
   const openPdfViewer = useCallback(
-    (filePath: string, fileName: string) => {
+    (fileName: string) => {
       router.push({
         pathname: '/(main)/pdf-viewer',
-        params: { filePath, fileName },
+        params: { fileName },
       });
     },
     [router]
@@ -265,20 +245,30 @@ export default function MessageScreen() {
 
   const handleAttachmentPress = useCallback(
     async (attachment: Attachment) => {
-      const { id: attachmentId, name: filename } = attachment;
+      const { filename } = attachment;
 
       // Check if already cached - findCachedFilePath returns actual path or null
-      const path = findCachedFilePath(attachmentId, filename);
-      if (path && getFileExtension(filename) === 'pdf') {
-        openPdfViewer(path, filename);
+      const existsInCache = fileExistsInCache(filename)
+
+      if( existsInCache ) {
+        openPdfViewer(filename);
         return;
       }
 
       const result = await downloadFileFromMessage(attachment);
-      
-      openPdfViewer(result, filename);
+
+      if( !result ) {
+        console.warn('[MessageScreen] Attachment download failed');
+        return;
+      }
+
+      if (getFileExtension(filename) !== 'pdf') {
+        return;
+      }
+
+      openPdfViewer(filename);
     },
-    [message?.id, openPdfViewer, downloadFileFromMessage]
+    [openPdfViewer, downloadFileFromMessage]
   );
 
   if (!message) {
