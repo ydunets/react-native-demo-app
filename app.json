@@ -10,7 +10,21 @@
       "supportsTabletMode": true,
       "bundleIdentifier": "com.example.expoapppresentation",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch", "processing"]
+        "UIBackgroundModes": ["fetch", "processing"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "192.168.100.2": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "10.0.2.2": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       }
     },
     "android": {
@@ -27,7 +41,7 @@
       ["expo-font"],
       ["expo-screen-orientation"],
       [
-        "@config-plugins/react-native-blob-util", 
+        "@config-plugins/react-native-blob-util",
         "@config-plugins/react-native-pdf"
       ]
     ],

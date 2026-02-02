@@ -45,7 +45,7 @@ const getFileServerBaseURL = (): string => {
 
 export const envConfig = {
   // Keycloak server URL (no trailing slash)
-  keycloakURL: 'http://localhost:8080',
+  keycloakURL: process.env.EXPO_PUBLIC_KEYCLOAK_URL || `http://${getHostAddress()}:8080`,
 
   // Keycloak realm name
   realm: process.env.EXPO_PUBLIC_KEYCLOAK_REALM || 'expo-app-realm',
