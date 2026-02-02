@@ -1,38 +1,32 @@
 import { useMemo } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Pdf from 'react-native-pdf';
 
 import { Text } from '@/components/nativewindui/Text';
 import { Icon } from '@/components/nativewindui/Icon';
-import { Pressable } from 'react-native';
+import { getCacheFilePath } from '@/lib/files';
 
-/**
- * Ensure path has file:// prefix for react-native-pdf
- */
-const ensureFileUri = (path: string): string => {
-  if (path.startsWith('file://')) return path;
-  return `file://${path}`;
-};
 
 export default function PDFViewerScreen() {
-  const params = useLocalSearchParams<{ filePath: string; fileName: string }>();
+  const params = useLocalSearchParams<{ fileName: string }>();
   const router = useRouter();
 
-  const pdfSource = useMemo(
-    () => ({ uri: ensureFileUri(params.filePath ?? '') }),
-    [params.filePath]
-  );
+  const pdfSource = useMemo(() => {
+    const fullPath = getCacheFilePath(params.fileName ?? '');
+    const nativePath = fullPath.replace(/^file:\/\//, '');
+    return { uri: nativePath };
+  }, [params.fileName]);
 
   const handleClose = () => {
     router.back();
   };
 
-  if (!params.filePath) {
+  if (!params.fileName) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <Icon name="exclamationmark.triangle" size={48} className="text-destructive" />
+        <Icon name={"exclamationmark"} size={48} className="text-destructive" />
         <Text variant="body" color="tertiary" className="mt-2">
           No file path provided
         </Text>
@@ -61,11 +55,15 @@ export default function PDFViewerScreen() {
         <Pdf
           source={pdfSource}
           style={styles.pdf}
-          onLoadComplete={(numberOfPages) => {
-            console.log('[PDFViewer] Loaded PDF with', numberOfPages, 'pages');
+          onLoadComplete={(numberOfPages, filePath) => {
+            console.log('[PDFViewer] Loaded PDF with', numberOfPages, 'pages from:', filePath);
+          }}
+          onLoadProgress={(percent) => {
+            console.log('[PDFViewer] Loading progress:', Math.round(percent * 100) + '%');
           }}
           onError={(error) => {
             console.error('[PDFViewer] Error loading PDF:', error);
+            console.error('[PDFViewer] Source was:', pdfSource);
           }}
           trustAllCerts={false}
         />

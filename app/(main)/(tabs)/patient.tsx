@@ -27,8 +27,7 @@ export default function PatientScreen() {
   } = useCachedFiles(downloadContext);
 
   const handleLogoutPress = async () => {
-    await logout();
-    // Don't need router.replace - the guard in (main)/_layout.tsx will handle it
+    logout();
   };
 
   // Extract user info with fallbacks
@@ -128,11 +127,11 @@ export default function PatientScreen() {
               <View className="gap-2">
                 {cachedFiles.map((file) => (
                   <CachedFileItem
-                    key={file.attachmentId}
+                    key={file.name + file.size.toString()}
                     name={file.name}
                     size={file.size}
                     isInFlight={file.isInFlight}
-                    onDelete={() => deleteFile(file.attachmentId, file.name)}
+                    onDelete={() => deleteFile(file.name)}
                   />
                 ))}
                 <Button

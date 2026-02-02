@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
 import { clearAttachmentsCache, deleteCachedFile } from '@/lib/files';
@@ -8,7 +8,6 @@ import type { DownloadMessageAttachmentsContextType } from '@/contexts/downloadM
 export interface CachedFile {
   name: string;
   size: number;
-  attachmentId: string;
   path: string;
   isInFlight?: boolean;
 }
@@ -19,34 +18,8 @@ interface UseCachedFilesResult {
   isLoading: boolean;
   isClearing: boolean;
   clearCache: () => Promise<void>;
-  deleteFile: (attachmentId: string, filename: string) => Promise<void>;
+  deleteFile: (filename: string) => Promise<void>;
 }
-
-/**
- * Parse a cached filename back into attachment ID and original name.
- * Files are stored as: {attachmentId}-{filename}
- */
-const parseCachedFilename = (
-  rawName: string
-): { attachmentId: string; name: string } | null => {
-  // Stored as: {uuid}-{filename}. UUIDs are 36 chars (8-4-4-4-12) so we can split safely.
-  const UUID_LENGTH = 36;
-
-  if (rawName.length > UUID_LENGTH && rawName[UUID_LENGTH] === '-') {
-    return {
-      attachmentId: rawName.substring(0, UUID_LENGTH),
-      name: rawName.substring(UUID_LENGTH + 1),
-    };
-  }
-
-  const dashIndex = rawName.indexOf('-');
-  if (dashIndex === -1) return null;
-
-  return {
-    attachmentId: rawName.substring(0, dashIndex),
-    name: rawName.substring(dashIndex + 1),
-  };
-};
 
 /**
  * Hook that scans the attachments cache directory
@@ -75,30 +48,19 @@ export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsConte
       }
 
       const result: CachedFile[] = [];
-      const seen = new Set<string>();
       let size = 0;
 
       for (const item of items) {
         if (!(item instanceof File)) continue;
 
-        const parsed = parseCachedFilename(item.name);
-        if (!parsed) continue;
-
-        const key = `${parsed.attachmentId}-${parsed.name}`;
-        if (seen.has(key)) {
-          continue; // Avoid listing duplicates with the same id/name
-        }
-        seen.add(key);
-
         const fileSize = item.size ?? 0;
         size += fileSize;
 
         result.push({
-          name: parsed.name,
+          name: item.name,
           size: fileSize,
-          attachmentId: parsed.attachmentId,
           path: item.uri,
-          isInFlight: parsed.attachmentId === inFlightId,
+          isInFlight: item.name === inFlightId,
         });
       }
 
@@ -137,17 +99,16 @@ export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsConte
     }
   }, [downloadContext]);
 
-  const deleteFile = useCallback(async (attachmentId: string, filename: string) => {
+  const deleteFile = useCallback(async (filename: string) => {
     try {
-      const success = await deleteCachedFile(attachmentId, filename);
+      const success = await deleteCachedFile(filename);
       if (success) {
         // Update local state to remove the deleted file
         setFiles((prev) => {
-          const updated = prev.filter((f) => f.attachmentId !== attachmentId);
-          return updated;
+          return prev.filter((file) => file.name !== filename);
         });
         setTotalSize((prev) => {
-          const deletedFile = files.find((f) => f.attachmentId === attachmentId);
+          const deletedFile = files.find((file) => file.name === filename);
           return prev - (deletedFile?.size ?? 0);
         });
       }
