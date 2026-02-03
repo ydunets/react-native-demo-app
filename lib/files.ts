@@ -96,38 +96,6 @@ export const fileExistsInCache = (
   const file = new File(filePath);
   return file.exists;
 };
-
-/**
- * Find actual cached file path for a filename
- * Returns the full path if found, null otherwise
- *
- * @param filename - Original filename
- * @returns Full file path or null if not cached
- */
-export const findCachedFilePath = (
-  filename: string
-): string | null => {
-  try {
-    const filePath = getCacheFilePath(filename);
-    const file = new File(filePath);
-    return file.exists ? filePath : null;
-  } catch (error) {
-    console.warn('[FileUtils] Error finding cached file:', error);
-    return null;
-  }
-};
-
-/**
- * Validate file size is within limits
- * Checks both file system limit and app limit (50MB)
- *
- * @param sizeBytes - File size in bytes
- * @returns true if size is acceptable
- */
-export const isFileSizeValid = (sizeBytes: number): boolean => {
-  return sizeBytes > 0 && sizeBytes <= MAX_FILE_SIZE;
-};
-
 /**
  * Get human-readable file size
  * Useful for UI display and logging
@@ -188,13 +156,13 @@ export const getCachedFileSize = (
     const file = new File(path);
 
     if (file.exists && file.size) {
-      console.log("File exist", file.exists, " size: ", file.size);
+      console.log("[Cached File Info] File Size, Bytes: ", file.size, "File Name: ", file.name, "");
       
       return file.size;
     }
     return 0;
   } catch (error) {
-    console.warn('[FileUtils] Error getting file size:', error);
+    console.warn('[File Utils] Error getting file size:', error);
     return 0;
   }
 };
@@ -211,16 +179,16 @@ export const clearAttachmentsCache = async (): Promise<boolean> => {
           item.delete();
         }
       }
-      console.log('[FileUtils] Cleared attachments cache');
+      console.log('[File Utils] Cleared attachments cache');
       return true;
     } catch (error: unknown) {
       // Directory might not exist, try to create fresh
-      console.warn('[FileUtils] Cache directory missing, recreating:', error);
+      console.warn('[File Utils] Cache directory missing, recreating:', error);
       await makeCacheDirectory();
       return true;
     }
   } catch (error) {
-    console.error('[FileUtils] Error clearing cache:', error);
+    console.error('[File Utils] Error clearing cache:', error);
     return false;
   }
 };
