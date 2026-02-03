@@ -12,7 +12,7 @@ import {
   getCacheFilePath,
   fileExistsInCache,
 } from '@/lib/files';
-import type { Message, Attachment } from '@/types/message';
+import type { Attachment, MessageWithAttachments } from '@/hooks/useMessageAttachments';
 import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
 
 const BYTES_PER_KB = 1024;
@@ -60,7 +60,7 @@ const getIconNameFromExtension = (extension: string): string => {
   }
 };
 
-function MessageHeader({ message, onBack }: { message: Message; onBack: () => void }) {
+function MessageHeader({ message, onBack }: { message: MessageWithAttachments; onBack: () => void }) {
   const formattedDate = useMemo(() => {
     const sentDate = new Date(message.sentAt);
     return sentDate.toLocaleDateString('en-US', {
@@ -113,13 +113,13 @@ type AttachmentItemProps = {
 
 function AttachmentItem({ attachment, onPress }: AttachmentItemProps) {
   const [isDownloading] = useState(false);
-  const isInMobileCache = getCachedFilenames().has(attachment.filename);
+  const isInMobileCache = getCachedFilenames().has(attachment.name);
   const isCache = isInMobileCache && attachment.fileSizeBytes === getCachedFileSize(getCacheFilePath(attachment.filename));
 
   const extension = useMemo(() => getFileExtension(attachment.name), [attachment.name]);
   const iconName = useMemo(() => getIconNameFromExtension(extension), [extension]);
   const fileSizeText = useMemo(
-    () => formatFileSize(attachment.fileSizeBytes),
+    () => formatFileSize(attachment.fileSizeBytes ?? 0),
     [attachment.fileSizeBytes]
   );
 
@@ -180,7 +180,7 @@ function AttachmentList({ attachments, onAttachmentPress }: AttachmentListProps)
 const MemoizedAttachmentList = memo(AttachmentList);
 
 type MessageBodyProps = {
-  message: Message;
+  message: MessageWithAttachments;
   onAttachmentPress: (attachment: Attachment) => void;
 };
 
@@ -209,11 +209,11 @@ export default function MessageScreen() {
   const router = useRouter();
 
   // Parse message data from route params
-  const message = useMemo<Message | null>(() => {
+  const message = useMemo<MessageWithAttachments | null>(() => {
     if (!params.messageData) return null;
 
     try {
-      return JSON.parse(params.messageData) as Message;
+      return JSON.parse(params.messageData) as MessageWithAttachments;
     } catch {
       console.warn('[MessageScreen] Failed to parse message data');
       return null;

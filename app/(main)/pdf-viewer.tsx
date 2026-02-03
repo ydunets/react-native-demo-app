@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { View, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { File } from 'expo-file-system';
 import Pdf from 'react-native-pdf';
 
 import { Text } from '@/components/nativewindui/Text';
 import { Icon } from '@/components/nativewindui/Icon';
 import { getCacheFilePath } from '@/lib/files';
-
 
 export default function PDFViewerScreen() {
   const params = useLocalSearchParams<{ fileName: string }>();
@@ -55,15 +55,14 @@ export default function PDFViewerScreen() {
         <Pdf
           source={pdfSource}
           style={styles.pdf}
-          onLoadComplete={(numberOfPages, filePath) => {
-            console.log('[PDFViewer] Loaded PDF with', numberOfPages, 'pages from:', filePath);
-          }}
-          onLoadProgress={(percent) => {
-            console.log('[PDFViewer] Loading progress:', Math.round(percent * 100) + '%');
+          onLoadComplete={(_, path) => {
+            const name = new File(path).name;
+            console.log('[PDF Viewer] PDF file', name ?? "undefined", 'was loaded.');
           }}
           onError={(error) => {
-            console.error('[PDFViewer] Error loading PDF:', error);
-            console.error('[PDFViewer] Source was:', pdfSource);
+            console.error('[PDF Viewer] Error loading PDF:', {
+              error, pdfSource
+            });
           }}
           trustAllCerts={false}
         />

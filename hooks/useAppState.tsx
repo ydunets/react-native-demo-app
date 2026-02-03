@@ -7,6 +7,9 @@ export function useAppState() {
 
 	useEffect(() => {
 		function onChange(newState: AppStateStatus) {
+      if(newState === "background") {
+        console.log("App went into the background")
+      }
 			setAppState(newState)
 		}
 
@@ -18,7 +21,8 @@ export function useAppState() {
 	}, [])
 
 	return {
-    isAppInBackground: appState === 'background' || appState === 'inactive',
+    isAppInBackground: appState === 'background',
+    isAppInactive: appState === 'inactive',
     isAppActive: appState === 'active',
     appState,
   }

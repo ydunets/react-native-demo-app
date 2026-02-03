@@ -5,6 +5,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { Platform } from 'react-native';
 import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
 import { CustomError } from './errors';
@@ -15,9 +16,10 @@ import { CustomError } from './errors';
 const createAxiosClient = (): AxiosInstance => {
   const client = axios.create({
     baseURL: envConfig.apiBaseUrl,
-    timeout: 30000,
+    timeout: 15000,
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
   });
 

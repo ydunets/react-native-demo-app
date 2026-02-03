@@ -10,19 +10,24 @@ import { useIsLoggedIn } from '@/stores/auth';
 
 const DEFAULT_LIMIT = 10;
 
-interface Attachment {
+export interface Attachment {
   id: string;
   name: string;
-  filename?: string;
+  messageId: string;
+  filename: string;
   url?: string;
   fileUrl?: string;
   fileSize?: number;
   fileSizeBytes?: number;
-  messageId: string;
 }
 
-interface MessageWithAttachments {
+export interface MessageWithAttachments {
   id: string;
+  subject: string,
+  senderName: string,
+  preview: string,
+  sentAt: string,
+  unread: string,
   attachments?: Attachment[];
 }
 
@@ -32,7 +37,7 @@ interface Messages {
 
 const fetchAndFilterAttachments = async (): Promise<Attachment[]> => {
   try {
-    console.warn("[Fetch Attachments] Started");
+    console.warn("[Fetch Attachments] Fetch attachments from backend API started...");
     
     const { data } = await axiosClient.get<Messages>('/messages/recent', {
       params: { limit: DEFAULT_LIMIT, includeAttachments: true },
@@ -50,7 +55,10 @@ const fetchAndFilterAttachments = async (): Promise<Attachment[]> => {
       return message.attachments;
     });
 
-    return [...new Map(rawAttachments.map(item => [item.filename, item])).values()];
+    const attachments = [...new Map(rawAttachments.map(item => [item.filename, item])).values()]
+
+    console.warn("[Fetch Attachments] Fetch attachments from backend API finished. Total attachments:",attachments.length,"attachments.");
+    return attachments;
   } catch (error) {
     console.error('Error fetching attachments:', error);
     return [];
@@ -59,13 +67,13 @@ const fetchAndFilterAttachments = async (): Promise<Attachment[]> => {
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const EMPTY_ATTACHMENTS: Attachment[] = [];
-export const MESSAGE_ATTACHMENTS = ['message-attachments'];
+export const MESSAGE_ATTACHMENTS_KEY = ['message-attachments'];
 
 export const useMessageAttachments = () => {
   const isLoggedIn = useIsLoggedIn();
 
   const query = useQuery<Attachment[], Error>({
-    queryKey: MESSAGE_ATTACHMENTS,
+    queryKey: MESSAGE_ATTACHMENTS_KEY,
     queryFn: () => fetchAndFilterAttachments(),
     staleTime: STALE_TIME,
     enabled: isLoggedIn,
@@ -73,6 +81,7 @@ export const useMessageAttachments = () => {
 
   return {
     attachments: query.data ?? EMPTY_ATTACHMENTS,
+    isSuccess: query.isSuccess,
     isLoading: query.isLoading || query.isFetching,
     error: query.error ?? null,
     refetch: query.refetch,

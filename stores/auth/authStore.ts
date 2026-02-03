@@ -105,10 +105,8 @@ export const useAuthStore = create<AuthStore>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          const hasTokens = !!state.tokens?.accessToken && !!state.tokens?.refreshToken;
-          state.isLoggedIn = hasTokens;
+          state.isLoggedIn = !!state.tokens?.accessToken && !!state.tokens?.refreshToken;
           state.isHydrated = true;
-          console.log('Store hydrated from MMKV - isLoggedIn:', hasTokens);
         }
       },
     }

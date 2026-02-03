@@ -3,7 +3,7 @@
  * Provides app-wide authentication setup and discovery document
  */
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, use } from 'react';
 import * as AuthSession from 'expo-auth-session';
 import { useQueryClient } from '@tanstack/react-query';
 import { useIsLoggedIn, useAuthActions } from '@/stores/auth';
@@ -12,7 +12,7 @@ import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { envConfig } from '@/configs/env-config';
 import { useNonce } from '@/hooks/useNonce';
 import { jwtDecode } from '@/lib/jwtDecode';
-import { MESSAGE_ATTACHMENTS } from '@/hooks/useMessageAttachments';
+import { MESSAGE_ATTACHMENTS_KEY } from '@/hooks/useMessageAttachments';
 
 /**
  * Auth context value type
@@ -55,8 +55,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthRequestLoading, setIsAuthRequestLoading] = React.useState(false);
   const { nonce, validateNonce } = useNonce(32);
 
-  console.log('Discovery Document Authorization Endpoint:', discovery?.authorizationEndpoint);
-
   /**
    * Handle Keycloak OAuth login
    */
@@ -64,11 +62,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsAuthRequestLoading(true);
       setAuthRequestError(null);
-
-      if (!discovery) {
-        throw new Error('OAuth discovery document not available');
-      }
-
       // Create auth request
       const redirectUri = AuthSession.makeRedirectUri({ path: 'oauth2callback' });
 
@@ -83,6 +76,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
 
+      if(!discovery) {
+        console.warn('Discovery document not found');
+        return
+      }
       // Prompt user to login
       const result = await request.promptAsync(discovery);
 
@@ -152,9 +149,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Starting logout...');
 
-      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS });
       // Call Keycloak logout - this invalidates server session
       await logoutFromKeycloak();
+
+      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS_KEY });
 
       console.log('✅ User logged out successfully');
     } catch (error) {
@@ -163,7 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await logoutFromKeycloak();
       
       // Still invalidate cache on error
-      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS });
+      await queryClient.invalidateQueries({ queryKey: MESSAGE_ATTACHMENTS_KEY });
     }
   };
 
@@ -190,7 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
  * @throws Error if used outside AuthProvider
  */
 export const useAuthContext = (): AuthContextValue => {
-  const context = React.useContext(AuthContext);
+  const context = use(AuthContext);
 
   if (!context) {
     throw new Error('useAuthContext must be used within an AuthProvider');

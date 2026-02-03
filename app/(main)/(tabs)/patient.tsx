@@ -27,6 +27,7 @@ export default function PatientScreen() {
   } = useCachedFiles(downloadContext);
 
   const handleLogoutPress = async () => {
+    await downloadContext.pauseProcessing()
     logout();
   };
 

@@ -24,7 +24,7 @@ const getHostAddress = (): string => {
     return '10.0.2.2';
   }
   // iOS Simulator needs Mac's IP address
-  return '192.168.100.2';
+  return '192.168.100.3';
 };
 
 const getFileServerBaseURL = (): string => {

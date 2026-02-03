@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth';
 import { envConfig } from '@/configs/env-config';
 import { DownloadCommand } from '@/stores/downloadQueue';
 import { useDownloadProgressStore } from '@/stores/downloadProgress';
-import { Attachment } from '@/types';
+import { Attachment } from '@/hooks/useMessageAttachments';
 
 const DOWNLOAD_DELAY_MS = 2000;
 
@@ -126,13 +126,6 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
         '\x1b[0m'
       );
       currentTaskRef.current = null;
-      console.log(
-        'Downloaded file to: ',
-        expoPath,
-        ' - native path: ',
-        nativePath,
-        ' - cache path:'
-      );
       return expoPath;
     } catch (error) {
       console.warn(
