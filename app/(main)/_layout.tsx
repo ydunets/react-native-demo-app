@@ -1,23 +1,13 @@
-import { Stack, useRouter } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useIsLoggedIn } from '@/stores/auth';
-import { useEffect } from 'react';
 import { DownloadProgressOverlay } from '@/components/DownloadProgressOverlay';
 
 export default function MainLayout() {
   const isLoggedIn = useIsLoggedIn();
-  const router = useRouter();
-
-  useEffect(() => {
-    console.log('Auth Status Changed - isLoggedIn:', isLoggedIn);
-
-    if (!isLoggedIn) {
-      router.replace('/(auth)/login');
-    }
-  }, [isLoggedIn, router]);
 
   if (!isLoggedIn) {
-    return null; // or a loading spinner
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (

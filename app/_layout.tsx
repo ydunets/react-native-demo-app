@@ -1,4 +1,11 @@
 import '@/global.css';
+import { LogBox } from 'react-native';
+
+// Suppress SafeAreaView deprecation warning from third-party libraries
+// This library dependency issue is being fixed upstream
+LogBox.ignoreLogs([
+  /SafeAreaView has been deprecated/,
+]);
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
