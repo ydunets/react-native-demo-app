@@ -1,325 +1,251 @@
-/**
- * Download Message Attachments Context
- * Manages the attachment download queue and processing lifecycle
- *
- * Architecture:
- * - Queue state managed via Zustand store (MMKV persistence)
- * - Download execution via react-native-blob-util with Bearer token auth
- * - Processing loop handles FIFO queue with pause/resume support
- * - Pause flag uses Proxy pattern for reactive updates without re-renders
- * - Context provides high-level API: addCommand, startProcessing, pauseProcessing, resumeProcessing
- */
-
-import React, { createContext, useCallback, useMemo, useRef, useEffect } from 'react';
-import RNFetchBlob from 'react-native-blob-util';
-import { File } from 'expo-file-system';
-
-import { envConfig } from '@/configs/env-config';
-import { MAX_FILE_SIZE } from '@/constants/File';
 import {
-  fileExistsInCache,
-  getCacheFilePath,
-  getCachedFileCount,
-  isFileSizeValid,
-  makeCacheDirectory,
-} from '@/lib/files';
-import { MAX_CACHED_FILES } from '@/constants/File';
-import { useAuthStore } from '@/store/authStore';
-import { useDownloadQueueStore, type DownloadCommand } from '@/store/downloadQueueStore';
-import { useDownloadStatsStore } from '@/store/downloadStatsStore';
-import { useMessageAttachments } from '@/hooks/useMessageAttachments';
+  useRef,
+  type PropsWithChildren,
+  createContext,
+  useContext,
+  useMemo,
+} from 'react';
+import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';  
 
-export type AttachmentInput = {
-  id: string;
-  name: string;
-  url?: string;
-  fileUrl?: string;
-  fileSizeBytes: number;
-  messageId: string;
+import RNFetchBlob, { type FetchBlobResponse, type StatefulPromise } from 'react-native-blob-util';
+import { getCacheFilePath, makeCacheDirectory, deleteCachedFile, fileExistsInCache } from '@/lib/files';
+import { useAuthStore } from '@/stores/auth';
+import { envConfig } from '@/configs/env-config';
+import { DownloadCommand } from '@/stores/downloadQueue';
+import { useDownloadProgressStore } from '@/stores/downloadProgress';
+import { Attachment } from '@/types';
+
+const DOWNLOAD_DELAY_MS = 2000;
+
+export type DownloadMessageAttachmentsContextType = {
+  addCommand: (command: DownloadCommand) => void;
+  resumeProcessing: () => Promise<void>;
+  resetQueue: () => void;
+  pauseProcessing: () => Promise<void>;
+  processQueue: () => Promise<void>;
+  downloadFile: (command: DownloadCommand) => Promise<string | undefined>;
+  startProcessing: () => Promise<void>;
+  downloadFileFromMessage: (attachment: Attachment) => Promise<string | undefined>;
+  cancelCurrentDownload: () => void;
 };
 
-export interface DownloadContextType {
-  attachments: AttachmentInput[];
-}
+export const DownloadMessageAttachmentsContext =
+  createContext<DownloadMessageAttachmentsContextType>({
+    addCommand: () => {},
+    resumeProcessing: () => Promise.resolve(),
+    resetQueue: () => {},
+    pauseProcessing: () => Promise.resolve(),
+    processQueue: () => Promise.resolve(),
+    downloadFile: () => Promise.resolve(undefined),
+    startProcessing: () => Promise.resolve(),
+    downloadFileFromMessage: () => Promise.resolve(undefined),
+    cancelCurrentDownload: () => Promise.resolve(),
+  });
 
-export const DownloadMessageAttachmentsContext = createContext<DownloadContextType | undefined>(
-  undefined
-);
-
-export interface DownloadMessageAttachmentsProviderProps {
-  children: React.ReactNode;
-}
-
-/**
- * Provider component for attachment download queue
- * Wraps the app to provide download capabilities to all screens
- *
- * Usage:
- * ```tsx
- * <DownloadMessageAttachmentsProvider>
- *   <YourApp />
- * </DownloadMessageAttachmentsProvider>
- * ```
- */
-
-const proxyTarget = { isPaused: false };
-const proxyHandler: ProxyHandler<typeof proxyTarget> = {
-  set(target, prop, value) {
-    if (prop === 'isPaused') {
-      target.isPaused = value;
-      return true;
-    }
-    return false;
-  },
-  get(target, prop) {
-    return target[prop as keyof typeof target];
-  },
+export const useDownloadMessageAttachmentsContext = () => {
+  const context = useContext(DownloadMessageAttachmentsContext);
+  if (!context) {
+    throw new Error(
+      'useDownloadMessageAttachmentsContext must be used within a DownloadMessageAttachmentsProvider'
+    );
+  }
+  return context;
 };
 
-export const DownloadMessageAttachmentsProvider: React.FC<
-  DownloadMessageAttachmentsProviderProps
-> = ({ children }) => {
-  const {attachments} = useMessageAttachments();
+
+export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildren) => {
   const {
-    queue,
+    queueRef,
+    shouldStopProxy,
     addCommand,
-    removeCommand,
-    isCompleted,
     pauseProcessing,
-    markCompleted,
-  } = useDownloadQueueStore();
-  
-  const {
-    incrementQueued,
-    incrementSkippedCompleted,
-    incrementSkippedCached,
-    incrementSkippedOversize,
-    incrementSkippedMissingUrl,
-    incrementDownloaded,
-    incrementFailed,
-  } = useDownloadStatsStore();
+    isProcessing,
+    resetQueue,
+  } = useManageProcessingQueue();
+  const progressActions = useDownloadProgressStore((state) => state.actions);
+  const currentTaskRef = useRef<StatefulPromise<FetchBlobResponse>>(null);
 
-  const queueRef = useRef<DownloadCommand[]>(queue);
-  const isProcessingRef = useRef(false);
+  const downloadFile = async ({ filename }: Omit<DownloadCommand,"id">) => {
+    // Get current auth state (same pattern as axios interceptor)
+    const { tokens } = useAuthStore.getState();
+    const accessToken = tokens?.accessToken;
 
-  // Pause flag using Proxy for reactive updates without re-renders
-  const pauseFlagRef = useRef(new Proxy(proxyTarget, proxyHandler));
+    if (!accessToken) {
+      console.warn(
+        '\x1b[33m',
+        '[File Download] No access token available, cannot download file',
+        '\x1b[0m'
+      );
+      return undefined;
+    }
 
-  const processAttachmentCommand = useCallback(
-    async (
-      attachment: AttachmentInput,
-      queuedIds: Set<string>
-    ): Promise<DownloadCommand | null> => {
-      const attachmentId = attachment.id;
-      const filename = attachment.name;
-      const fileUrl = attachment.fileUrl || attachment.url;
-      const sizeBytes = attachment.fileSizeBytes;
+    const expoPath = getCacheFilePath(filename);
 
-      if (!fileUrl) {
-        console.warn('[DownloadContext] Skipping attachment without fileUrl', attachmentId);
-        incrementSkippedMissingUrl();
-        return null;
-      }
+    try {
+      await makeCacheDirectory();
 
-      if (!isFileSizeValid(sizeBytes)) {
-        console.warn('[DownloadContext] Skipping oversized attachment', filename, sizeBytes);
-        incrementSkippedOversize();
-        return null;
-      }
+      // Get expo-file-system path and convert to native path for RNFetchBlob
+      const nativePath = expoPath.replace(/^file:\/\//, '');
 
-      if (isCompleted(attachmentId) || queuedIds.has(attachmentId)) {
-        incrementSkippedCompleted();
-        return null;
-      }
+      console.log('\x1b[36m', `[Download] Starting download: ${filename}`, '\x1b[0m');
 
-      const alreadyCached = await fileExistsInCache(attachmentId, filename);
-      if (alreadyCached) {
-        markCompleted(attachmentId);
-        incrementSkippedCached();
-        return null;
-      }
+      const delayParam = DOWNLOAD_DELAY_MS > 0 ? `?delay=${DOWNLOAD_DELAY_MS}` : '';
+      let fileSize = 0;
 
-      const command: DownloadCommand = {
-        id: attachmentId,
-        attachmentId,
-        filename,
-        fileUrl,
-        fileSizeBytes: sizeBytes,
-        messageId: attachment.messageId,
-        timestamp: Date.now(),
-      };
-
-      return command;
-    },
-    [
-      incrementSkippedMissingUrl,
-      incrementSkippedOversize,
-      incrementSkippedCompleted,
-      incrementSkippedCached,
-      isCompleted,
-      markCompleted,
-    ]
-  );
-
-  const addFilesToProcessingQueue = useCallback(
-    async (attachments: AttachmentInput[]) => {
-      const cachedCount = getCachedFileCount();
-      if (cachedCount >= MAX_CACHED_FILES) {
-        console.warn('[DownloadContext] Cache is full (%d/%d files), skipping queue', cachedCount, MAX_CACHED_FILES);
-        return { isReadyToStartProcessing: false };
-      }
-
-      const queuedIds = new Set(queueRef.current.map((item) => item.attachmentId));
-      let totalFiles = cachedCount + queuedIds.size;
-
-      for (const attachment of attachments) {
-        if (totalFiles >= MAX_CACHED_FILES) {
-          console.warn('[DownloadContext] Cache limit reached (%d/%d), stopping enqueue', totalFiles, MAX_CACHED_FILES);
-          break;
-        }
-
-        const command = await processAttachmentCommand(attachment, queuedIds);
-
-        if (command) {
-          addCommand(command);
-          queuedIds.add(command.attachmentId);
-          incrementQueued();
-          totalFiles++;
-        }
-      }
-
-      return {
-        isReadyToStartProcessing: queueRef.current.length > 0,
-      }
-    },
-    [addCommand, incrementQueued, processAttachmentCommand]
-  );
-
-  const fetchAndSaveFile = useCallback(
-    async (filename: string, attachmentId: string, token: string): Promise<boolean> => {
-      try {
-        await makeCacheDirectory();
-
-        const response = await RNFetchBlob.fetch(
+      const downloadFileTask = RNFetchBlob.config({
+        path: nativePath,
+      })
+        .fetch(
           'POST',
-          `${envConfig.fileServerBaseURL}/api/files/download`,
+          `${envConfig.fileServerBaseURL}/api/files/download-binary${delayParam}`,
           {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            Accept: 'application/octet-stream',
           },
           JSON.stringify({ filename })
-        );
+        )
+        .progress({ count: 0 }, (received, total) => {
+          const percent = total > 0 ? ((received / total) * 100).toFixed(1) : 0;
+          fileSize = total;
+          if (received !== total)
+            console.log(
+              '\x1b[34m',
+              `[Download Progress] ${filename} - ${percent}% (${received} / ${total} bytes)`,
+              '\x1b[0m'
+            );
+        });
 
-        const status = response.info().status;
-        if (status < 200 || status >= 300) {
-          console.warn('[DownloadContext] Download failed', filename, status);
-          return false;
-        }
+      // Store task reference for potential cancellation
+      currentTaskRef.current = downloadFileTask;
 
-        const base64 = await response.base64();
-        const filePath = getCacheFilePath(attachmentId, filename);
-
-        const file = new File(filePath);
-        await file.write(base64, { encoding: 'base64' });
-
-        return true;
-      } catch (error) {
-        console.error('[DownloadContext] Error downloading file', filename, error);
-        return false;
-      }
-    },
-    []
-  );
-
-  const downloadFile = useCallback(
-    async (command: DownloadCommand): Promise<boolean> => {
-      if (!isFileSizeValid(command.fileSizeBytes)) {
-        console.warn('[DownloadContext] File exceeds limit', command.filename);
-        return false;
-      }
-
-      const token = useAuthStore.getState().tokens?.accessToken;
-
-      if (!token) {
-        console.warn('[DownloadContext] Missing access token - pausing queue');
-        pauseProcessing();
-        return false;
-      }
-
-      return fetchAndSaveFile(command.filename, command.attachmentId, token);
-    },
-    [fetchAndSaveFile, pauseProcessing]
-  );
-
-  const processQueue = useCallback(async () => {
-    if (isProcessingRef.current) return;
-
-    if (queueRef.current.length === 0) {
-      pauseProcessing();
-      return;
+      await downloadFileTask;
+      console.log(
+        '\x1b[32m',
+        `[Download] Completed: ${filename} - 100% (${fileSize} / ${fileSize} bytes)`,
+        '\x1b[0m'
+      );
+      currentTaskRef.current = null;
+      console.log(
+        'Downloaded file to: ',
+        expoPath,
+        ' - native path: ',
+        nativePath,
+        ' - cache path:'
+      );
+      return expoPath;
+    } catch (error) {
+      console.warn(
+        '\x1b[31m',
+        `[DownloadContext] Error downloading file ${filename}`,
+        '\x1b[0m',
+        error
+      );
+      await deleteCachedFile(filename);
+      currentTaskRef.current = null;
+      return undefined;
     }
+  };
 
-    isProcessingRef.current = true;
+  const processQueue = async () => {
+    isProcessing.current = true;
+    const totalFiles = queueRef.current.length;
 
-    // Process queue while not paused and items remain
-    while (!pauseFlagRef.current.isPaused && queueRef.current.length > 0) {
-      const [nextCommand, ...rest] = queueRef.current;
-      const completed = isCompleted(nextCommand.id);
-      queueRef.current = rest;
+    while (queueRef.current.length) {
+      const currentCommand = queueRef.current[0];
+      const currentFileNumber = totalFiles - queueRef.current.length + 1;
+      
+      progressActions.setProgress(currentFileNumber, totalFiles, currentCommand.filename);
+      
+      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${queueRef.current.length} - ${currentCommand.filename}`, '\x1b[0m');
+      const result = await downloadFile(currentCommand);
 
-      if (completed) {
-        removeCommand(nextCommand.id);
-        continue;
-      }
-
-      if (nextCommand.fileSizeBytes > MAX_FILE_SIZE) {
-        console.warn('[DownloadContext] Skipping file over limit', nextCommand.filename);
-        removeCommand(nextCommand.id);
-        continue;
-      }
-
-      if (getCachedFileCount() >= MAX_CACHED_FILES) {
-        console.warn('[DownloadContext] Cache full, stopping processing');
-        removeCommand(nextCommand.id);
+      if (!result) {
         break;
       }
 
-      console.log('[DownloadContext] Downloading:', nextCommand.filename, '(id:', nextCommand.attachmentId, ')');
-      const success = await downloadFile(nextCommand);
+      queueRef.current.shift();
 
-      removeCommand(nextCommand.id);
-
-      if (success) {
-        markCompleted(nextCommand.id);
-        incrementDownloaded();
-        console.log('[DownloadContext] Downloaded:', nextCommand.filename, '| cached:', getCachedFileCount());
-      } else {
-        incrementFailed();
-        console.warn('[DownloadContext] Failed:', nextCommand.filename);
+      if (shouldStopProxy.shouldStop) {
+        console.log('\x1b[35m', '[File Processing] Stop processing', '\x1b[0m');
+        shouldStopProxy.shouldStop = false;
+        break;
       }
     }
 
-    pauseProcessing();
-    isProcessingRef.current = false;
-  }, [downloadFile, pauseProcessing, incrementDownloaded, incrementFailed]);
+    isProcessing.current = false;
+    progressActions.resetProgress();
+  };
 
-  const triggerProcessQueue = useCallback(() => {
-    processQueue().catch((error) => {
-      console.error('[DownloadContext] processQueue failed:', error);
+  const resumeProcessing = async () => {
+    isProcessing.current = true;
+    console.log('\x1b[32m', '[File Processing] New processing queue started', '\x1b[0m');
+    await processQueue();
+  };
+
+  const downloadFileFromMessage = async (attachment: Attachment) => {
+    const { name: filename } = attachment;
+
+    // Check if file already exists in cache
+    const existsInCache = fileExistsInCache(filename);
+    if (existsInCache) {
+      console.log('\x1b[32m', `[File Processing] File already cached, skipping download: ${filename}`, '\x1b[0m');
+      return getCacheFilePath(filename);
+    }
+
+    await pauseProcessing();
+
+    const filePath = await downloadFile({
+      filename,
     });
-  }, [processQueue]);
 
-  // Initialize queue processing on provider mount
-  useEffect(() => {
-    addFilesToProcessingQueue(attachments).then((result) => {
-      if (result.isReadyToStartProcessing) {
-        triggerProcessQueue();
-      }
+    queueRef.current = queueRef.current.filter(command => command.filename !== filename);
+
+    console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
+
+    await resumeProcessing();
+    
+    return filePath;
+  };
+
+  const startProcessing = async () => {
+    // Synchronous check using ref to prevent race condition
+    if (isProcessing.current) {
+      console.log('\x1b[33m', '[File Processing] Already processing (blocked by ref), skipping start', '\x1b[0m');
+      return;
+    }
+
+    if (!queueRef.current.length) {
+      console.log('\x1b[90m', '[File Processing] No items in queue, processing not started', '\x1b[0m');
+      return;
+    }
+
+    await processQueue();
+  };
+
+  const cancelCurrentDownload = async () => {
+    await currentTaskRef.current?.cancel(() => {
+      console.log('\x1b[31m', '[File Processing] Download cancelled', '\x1b[0m');
     })
-  }, [addFilesToProcessingQueue, attachments, triggerProcessQueue]);
+  }
+
+  const value = useMemo(
+    () => ({
+      addCommand,
+      resumeProcessing,
+      resetQueue,
+      pauseProcessing,
+      processQueue,
+      downloadFile,
+      startProcessing,
+      downloadFileFromMessage,
+      cancelCurrentDownload
+    }),
+    [isProcessing.current]
+  );
 
   return (
-    <DownloadMessageAttachmentsContext.Provider value={{attachments}}>
+    <DownloadMessageAttachmentsContext.Provider value={value}>
       {children}
     </DownloadMessageAttachmentsContext.Provider>
   );

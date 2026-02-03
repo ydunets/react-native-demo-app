@@ -12,8 +12,10 @@ const PILLARS = [
 
 export default function PillarsListScreen() {
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
-      <ScrollView className="flex-1">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'left', 'right', 'bottom']}>
+      <ScrollView
+        className="flex-1"
+        contentInsetAdjustmentBehavior="automatic">
         <View className="gap-4 p-4">
           <Text variant="title2" className="mb-2">
             Services List

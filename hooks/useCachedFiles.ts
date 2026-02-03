@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
-import { clearAttachmentsCache } from '@/lib/files';
+import { clearAttachmentsCache, deleteCachedFile } from '@/lib/files';
+import { useInFlightAttachmentId } from '@/stores/downloadQueue';
+import type { DownloadMessageAttachmentsContextType } from '@/contexts/downloadMessageAttachments';
 
 export interface CachedFile {
   name: string;
   size: number;
-  attachmentId: string;
   path: string;
+  isInFlight?: boolean;
 }
 
 interface UseCachedFilesResult {
@@ -16,33 +18,19 @@ interface UseCachedFilesResult {
   isLoading: boolean;
   isClearing: boolean;
   clearCache: () => Promise<void>;
+  deleteFile: (filename: string) => Promise<void>;
 }
-
-/**
- * Parse a cached filename back into attachment ID and original name.
- * Files are stored as: {attachmentId}-{filename}
- */
-const parseCachedFilename = (
-  rawName: string
-): { attachmentId: string; name: string } | null => {
-  const dashIndex = rawName.indexOf('-');
-  if (dashIndex === -1) return null;
-
-  return {
-    attachmentId: rawName.substring(0, dashIndex),
-    name: rawName.substring(dashIndex + 1),
-  };
-};
 
 /**
  * Hook that scans the attachments cache directory
  * and returns metadata for all cached files.
  */
-export const useCachedFiles = (): UseCachedFilesResult => {
+export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsContextType): UseCachedFilesResult => {
   const [files, setFiles] = useState<CachedFile[]>([]);
   const [totalSize, setTotalSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const inFlightId = useInFlightAttachmentId();
 
   const loadCachedFiles = useCallback(() => {
     try {
@@ -65,17 +53,14 @@ export const useCachedFiles = (): UseCachedFilesResult => {
       for (const item of items) {
         if (!(item instanceof File)) continue;
 
-        const parsed = parseCachedFilename(item.name);
-        if (!parsed) continue;
-
         const fileSize = item.size ?? 0;
         size += fileSize;
 
         result.push({
-          name: parsed.name,
+          name: item.name,
           size: fileSize,
-          attachmentId: parsed.attachmentId,
           path: item.uri,
+          isInFlight: item.name === inFlightId,
         });
       }
 
@@ -91,11 +76,19 @@ export const useCachedFiles = (): UseCachedFilesResult => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [inFlightId]);
 
   const clearCache = useCallback(async () => {
     setIsClearing(true);
     try {
+      // First, stop any ongoing downloads to prevent race conditions
+      if (downloadContext) {
+        await downloadContext.pauseProcessing();
+        downloadContext.resetQueue();
+        console.log('[useCachedFiles] Download queue paused and reset');
+      }
+      
+      // Now safe to clear the cache
       await clearAttachmentsCache();
       setFiles([]);
       setTotalSize(0);
@@ -104,11 +97,29 @@ export const useCachedFiles = (): UseCachedFilesResult => {
     } finally {
       setIsClearing(false);
     }
-  }, []);
+  }, [downloadContext]);
+
+  const deleteFile = useCallback(async (filename: string) => {
+    try {
+      const success = await deleteCachedFile(filename);
+      if (success) {
+        // Update local state to remove the deleted file
+        setFiles((prev) => {
+          return prev.filter((file) => file.name !== filename);
+        });
+        setTotalSize((prev) => {
+          const deletedFile = files.find((file) => file.name === filename);
+          return prev - (deletedFile?.size ?? 0);
+        });
+      }
+    } catch (error) {
+      console.error('[useCachedFiles] Failed to delete file:', error);
+    }
+  }, [files]);
 
   useEffect(() => {
     loadCachedFiles();
   }, [loadCachedFiles]);
 
-  return { files, totalSize, isLoading, isClearing, clearCache };
+  return { files, totalSize, isLoading, isClearing, clearCache, deleteFile };
 };

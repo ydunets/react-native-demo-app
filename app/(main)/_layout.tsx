@@ -1,10 +1,11 @@
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAuthStore } from '@/store/authStore';
+import { useIsLoggedIn } from '@/stores/auth';
 import { useEffect } from 'react';
+import { DownloadProgressOverlay } from '@/components/DownloadProgressOverlay';
 
 export default function MainLayout() {
-  const { isLoggedIn } = useAuthStore();
+  const isLoggedIn = useIsLoggedIn();
   const router = useRouter();
 
   useEffect(() => {
@@ -46,7 +47,19 @@ export default function MainLayout() {
             headerShown: false,
           }}
         />
+
+        {/* PDF Viewer modal */}
+        <Stack.Screen
+          name="pdf-viewer"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: true,
+          }}
+        />
       </Stack>
+      
+      {/* Download progress overlay - shows above all screens */}
+      <DownloadProgressOverlay />
     </>
   );
 }

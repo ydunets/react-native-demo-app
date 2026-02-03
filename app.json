@@ -8,7 +8,24 @@
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTabletMode": true,
-      "bundleIdentifier": "com.example.expoapppresentation"
+      "bundleIdentifier": "com.example.expoapppresentation",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "processing"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "192.168.100.2": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "10.0.2.2": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
+      }
     },
     "android": {
       "package": "com.example.expoapppresentation",
@@ -20,7 +37,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [["expo-font"], ["expo-screen-orientation"]],
+    "plugins": [
+      ["expo-font"],
+      ["expo-screen-orientation"],
+      [
+        "@config-plugins/react-native-blob-util",
+        "@config-plugins/react-native-pdf"
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "your-project-id"

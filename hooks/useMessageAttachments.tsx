@@ -6,17 +6,13 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { axiosClient } from '@/api/axios-client';
-import { AttachmentInput } from '@/contexts/downloadMessageAttachments';
-import { MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
-import { fileExistsInCache, isFileSizeValid } from '@/lib/files';
-import { useDownloadQueueStore } from '@/store/downloadQueueStore';
-import { useAuthStore } from '@/store/authStore';
+import { useIsLoggedIn } from '@/stores/auth';
 
 const DEFAULT_LIMIT = 10;
 
 interface Attachment {
   id: string;
-  name?: string;
+  name: string;
   filename?: string;
   url?: string;
   fileUrl?: string;
@@ -34,60 +30,9 @@ interface Messages {
   messages?: MessageWithAttachments[];
 }
 
-export interface UseMessageAttachmentsOptions {
-  fetchAttachments?: () => Promise<AttachmentInput[]>;
-  enabled?: boolean;
-}
-
-const normalizeAttachment = (attachment: Attachment): AttachmentInput | null => {
-  const id = attachment.id;
-  const name = attachment.name || attachment.filename;
-  const fileUrl = attachment.fileUrl || attachment.url;
-  const fileSizeBytes = attachment.fileSizeBytes ?? attachment.fileSize ?? 0;
-  const messageId = attachment.messageId;
-
-  if (!id || !fileUrl || !name) {
-    return null;
-  }
-
-  return {
-    id,
-    name,
-    fileUrl,
-    fileSizeBytes,
-    messageId: messageId || '',
-  };
-};
-
-const shouldIncludeAttachment = async (
-  attachment: AttachmentInput,
-  completed: Set<string>,
-  queuedIds: Set<string>
-): Promise<boolean> => {
-  if (!isFileSizeValid(attachment.fileSizeBytes ?? 0)) {
-    return false;
-  }
-
-  if (attachment.fileSizeBytes > MAX_FILE_SIZE) {
-    return false;
-  }
-
-  if (completed.has(attachment.id) || queuedIds.has(attachment.id)) {
-    return false;
-  }
-
-  const existsInCache = await fileExistsInCache(attachment.id, attachment.name);
-  if (existsInCache) {
-    useDownloadQueueStore.getState().markCompleted(attachment.id);
-    return false;
-  }
-
-  return true;
-};
-
-const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
+const fetchAndFilterAttachments = async (): Promise<Attachment[]> => {
   try {
-    console.log("[Fetch Attachments] Started");
+    console.warn("[Fetch Attachments] Started");
     
     const { data } = await axiosClient.get<Messages>('/messages/recent', {
       params: { limit: DEFAULT_LIMIT, includeAttachments: true },
@@ -95,10 +40,7 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
 
     // Get messages from response
     const messages = data?.messages ?? [];
-
-    console.log(messages.length);
-    
-
+  
     // Filter messages that have attachments
     const messagesWithAttachments = messages.filter(
       (message) => !!message?.attachments && message?.attachments.length > 0
@@ -108,40 +50,7 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
       return message.attachments;
     });
 
-    console.log(rawAttachments.length);
-    
-
-    // Normalize attachments
-    const normalized = rawAttachments
-      .map(normalizeAttachment)
-      .filter((item) => item !== null);
-
-    // Get current queue state for filtering
-    const completed = useDownloadQueueStore.getState().getCompletedIdsAsSet();
-    const queuedIds = new Set(
-      useDownloadQueueStore.getState().queue.map((item) => item.attachmentId)
-    );
-
-    // Filter and deduplicate
-    const unique = new Map<string, AttachmentInput>();
-
-    for (const attachment of normalized) {
-      const shouldInclude = await shouldIncludeAttachment(attachment, completed, queuedIds);
-      
-      if (!shouldInclude) {
-        continue;
-      }
-
-      if (!unique.has(attachment.id)) {
-        unique.set(attachment.id, attachment);
-      }
-
-      if (unique.size >= MAX_CACHED_FILES) {
-        break;
-      }
-    }
-
-    return Array.from(unique.values());
+    return [...new Map(rawAttachments.map(item => [item.filename, item])).values()];
   } catch (error) {
     console.error('Error fetching attachments:', error);
     return [];
@@ -149,13 +58,14 @@ const fetchAndFilterAttachments = async (): Promise<AttachmentInput[]> => {
 };
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
-const EMPTY_ATTACHMENTS: AttachmentInput[] = [];
+const EMPTY_ATTACHMENTS: Attachment[] = [];
+export const MESSAGE_ATTACHMENTS = ['message-attachments'];
 
 export const useMessageAttachments = () => {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const isLoggedIn = useIsLoggedIn();
 
-  const query = useQuery<AttachmentInput[], Error>({
-    queryKey: ['message-attachments'],
+  const query = useQuery<Attachment[], Error>({
+    queryKey: MESSAGE_ATTACHMENTS,
     queryFn: () => fetchAndFilterAttachments(),
     staleTime: STALE_TIME,
     enabled: isLoggedIn,

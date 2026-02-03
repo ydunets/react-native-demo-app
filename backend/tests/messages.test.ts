@@ -88,6 +88,90 @@ describe('Messages API', () => {
       }
     });
 
+    it('should return messages with display fields (subject, senderName, preview, sentAt, unread)', async () => {
+      const response = await request(app)
+        .get('/api/messages/recent?limit=5')
+        .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.messages.length).toBeGreaterThan(0);
+
+      response.body.messages.forEach((message: any) => {
+        // Verify all display fields exist
+        expect(message).toHaveProperty('subject');
+        expect(message).toHaveProperty('senderName');
+        expect(message).toHaveProperty('preview');
+        expect(message).toHaveProperty('sentAt');
+        expect(message).toHaveProperty('unread');
+
+        // Verify field types
+        expect(typeof message.subject).toBe('string');
+        expect(typeof message.senderName).toBe('string');
+        expect(typeof message.preview).toBe('string');
+        expect(typeof message.sentAt).toBe('string');
+        expect(typeof message.unread).toBe('boolean');
+
+        // Verify fields are not empty
+        expect(message.subject.length).toBeGreaterThan(0);
+        expect(message.senderName.length).toBeGreaterThan(0);
+        expect(message.preview.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should return sentAt as valid ISO date string', async () => {
+      const response = await request(app)
+        .get('/api/messages/recent?limit=3')
+        .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+      expect(response.status).toBe(200);
+
+      response.body.messages.forEach((message: any) => {
+        // Verify sentAt is a valid ISO date string
+        const date = new Date(message.sentAt);
+        expect(date.toString()).not.toBe('Invalid Date');
+        expect(message.sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      });
+    });
+
+    it('should generate deterministic display data based on message index', async () => {
+      // Fetch messages twice and verify same data is returned
+      const response1 = await request(app)
+        .get('/api/messages/recent?limit=5')
+        .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+      const response2 = await request(app)
+        .get('/api/messages/recent?limit=5')
+        .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+      expect(response1.status).toBe(200);
+      expect(response2.status).toBe(200);
+
+      // Display fields should be deterministic (same for same index)
+      for (let i = 0; i < response1.body.messages.length; i++) {
+        expect(response1.body.messages[i].subject).toBe(response2.body.messages[i].subject);
+        expect(response1.body.messages[i].senderName).toBe(response2.body.messages[i].senderName);
+        expect(response1.body.messages[i].preview).toBe(response2.body.messages[i].preview);
+        expect(response1.body.messages[i].sentAt).toBe(response2.body.messages[i].sentAt);
+        expect(response1.body.messages[i].unread).toBe(response2.body.messages[i].unread);
+      }
+    });
+
+    it('should have unread=true for every 3rd message (index % 3 === 0)', async () => {
+      const response = await request(app)
+        .get('/api/messages/recent?limit=10')
+        .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+      expect(response.status).toBe(200);
+
+      response.body.messages.forEach((message: any, index: number) => {
+        if (index % 3 === 0) {
+          expect(message.unread).toBe(true);
+        } else {
+          expect(message.unread).toBe(false);
+        }
+      });
+    });
+
     it('should return messages with 4 attachments each', async () => {
       const response = await request(app)
         .get('/api/messages/recent?limit=3&includeAttachments=true')

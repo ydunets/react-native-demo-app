@@ -8,24 +8,26 @@ import { Icon } from '@/components/nativewindui/Icon';
 import { ActivityIndicator } from '@/components/nativewindui/ActivityIndicator';
 import { CachedFileItem } from '@/components/CachedFileItem';
 import { useAuthContext } from '@/contexts/auth';
-import { useAuthStore } from '@/store/authStore';
+import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
+import { useUser } from '@/stores/auth';
 import { useCachedFiles } from '@/hooks/useCachedFiles';
 import { formatFileSize } from '@/lib/files';
 
 export default function PatientScreen() {
   const { logout } = useAuthContext();
-  const { user } = useAuthStore();
+  const user = useUser();
+  const downloadContext = useDownloadMessageAttachmentsContext();
   const {
     files: cachedFiles,
     totalSize,
     isLoading: isCacheLoading,
     isClearing,
     clearCache,
-  } = useCachedFiles();
+    deleteFile,
+  } = useCachedFiles(downloadContext);
 
   const handleLogoutPress = async () => {
-    await logout();
-    // Don't need router.replace - the guard in (main)/_layout.tsx will handle it
+    logout();
   };
 
   // Extract user info with fallbacks
@@ -124,7 +126,13 @@ export default function PatientScreen() {
             ) : (
               <View className="gap-2">
                 {cachedFiles.map((file) => (
-                  <CachedFileItem key={file.attachmentId} name={file.name} size={file.size} />
+                  <CachedFileItem
+                    key={file.name + file.size.toString()}
+                    name={file.name}
+                    size={file.size}
+                    isInFlight={file.isInFlight}
+                    onDelete={() => deleteFile(file.name)}
+                  />
                 ))}
                 <Button
                   variant="plain"

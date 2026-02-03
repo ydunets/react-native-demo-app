@@ -13,6 +13,7 @@ import { NAV_THEME } from '@/theme';
 import { AuthProvider } from '@/contexts/auth';
 import { DownloadMessageAttachmentsProvider } from '@/contexts/downloadMessageAttachments';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { useDownloadMessageAttachments } from '@/hooks/useDownloadMessageAttachments';
 
 // Create QueryClient once outside of component to prevent recreation on re-renders
 const queryClient = new QueryClient();
@@ -49,8 +50,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutContent() {
-  // useDownloadMessageAttachments();
-
+  useDownloadMessageAttachments();
+  
   return (
     <Stack
       screenOptions={{

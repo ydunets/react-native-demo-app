@@ -21,7 +21,7 @@ services:
     networks:
       - keycloak-network
     ports:
-      - "5432:5432"
+      - "0.0.0.0:5432:5432"
 
   # Keycloak Authentication Server
   # - Provides OAuth2/OpenID Connect functionality
@@ -48,12 +48,12 @@ services:
       KC_PROXY: edge
       KC_FEATURES: "admin-fine-grained-authz"
       KC_SPI_REALM_MASTER_SSL_REQUIRED: "NONE"
-      KEYCLOAK_FRONTEND_URL: "http://localhost:8080"
+      KEYCLOAK_FRONTEND_URL: "http://192.168.100.2:8080"
       
-    command: start-dev --hostname=localhost
+    command: start-dev --hostname=192.168.100.2
     
     ports:
-      - "8080:8080"
+      - "0.0.0.0:8080:8080"
     
     depends_on:
       postgres:
@@ -86,7 +86,7 @@ services:
     environment:
       KEYCLOAK_PUBLIC_KEY_FILE: /app/keys/keycloak-public-key.pem
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001"
     volumes:
       - ./backend/files:/app/files:ro
       - ./backend/keycloak-public-key.pem:/app/keys/keycloak-public-key.pem:ro

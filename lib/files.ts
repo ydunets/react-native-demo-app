@@ -15,18 +15,24 @@
  * - Paths utilities for storage and directory access
  */
 
-import { Directory, File, Paths } from 'expo-file-system';
-import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE, MAX_CACHED_FILES } from '@/constants/File';
+import { Directory, File } from 'expo-file-system';
+import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE } from '@/constants/File';
 
-/**
- * Get file extension from filename
- * @param filename - Full filename with extension
- * @returns File extension in lowercase (without dot)
- */
-export const getFileExtension = (filename: string): string => {
-  const lastDotIndex = filename.lastIndexOf('.');
-  if (lastDotIndex === -1) return '';
-  return filename.substring(lastDotIndex + 1).toLowerCase();
+export const getCachedFilenames = (): Set<string> => {
+  try {
+    const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
+    const items = cacheDir.list();
+    const names = new Set<string>();
+
+    for (const item of items) {
+      if (!(item instanceof File)) continue;
+      names.add(item.name);
+    }
+
+    return names;
+  } catch {
+    return new Set();
+  }
 };
 
 /**
@@ -66,15 +72,13 @@ export const makeCacheDirectory = async (): Promise<boolean> => {
 
 /**
  * Get full file path for cached attachment
- * Combines cache directory with attachment ID and filename
+ * Combines cache directory with filename
  *
- * @param attachmentId - Unique identifier for the attachment
  * @param filename - Original filename
  * @returns Full path to cached file
  */
-export const getCacheFilePath = (attachmentId: string, filename: string): string => {
-  // Use attachment ID as directory name for organization
-  return `${ATTACHMENTS_CACHE_DIR}${attachmentId}-${filename}`;
+export const getCacheFilePath = (filename: string): string => {
+  return `${ATTACHMENTS_CACHE_DIR}${filename}`;
 };
 
 /**
@@ -82,45 +86,34 @@ export const getCacheFilePath = (attachmentId: string, filename: string): string
  * Used for deduplication and skip logic
  * Uses new File API for checking existence
  *
- * @param attachmentId - Unique identifier for the attachment
  * @param filename - Original filename
  * @returns true if file exists and is readable
  */
-export const fileExistsInCache = async (
-  attachmentId: string,
+export const fileExistsInCache = (
   filename: string
-): Promise<boolean> => {
-  try {
-    const filePath = getCacheFilePath(attachmentId, filename);
-    const file = new File(filePath);
-    // File.exists is a synchronous property
-    return file.exists;
-  } catch (error) {
-    console.warn('[FileUtils] Error checking file existence:', error);
-    return false;
-  }
+): boolean => {
+  const filePath = getCacheFilePath(filename);
+  const file = new File(filePath);
+  return file.exists;
 };
 
 /**
- * Check if device has enough storage space
- * Uses new Paths.availableDiskSpace API
+ * Find actual cached file path for a filename
+ * Returns the full path if found, null otherwise
  *
- * @param requiredSizeBytes - Size needed in bytes
- * @returns true if enough space is available
+ * @param filename - Original filename
+ * @returns Full file path or null if not cached
  */
-export const hasEnoughStorageSpace = async (requiredSizeBytes: number): Promise<boolean> => {
+export const findCachedFilePath = (
+  filename: string
+): string | null => {
   try {
-    // Get available disk space using new API
-    const availableSpace = Paths.availableDiskSpace;
-
-    // Require at least the file size + 10% buffer for filesystem overhead
-    const requiredWithBuffer = requiredSizeBytes * 1.1;
-
-    return availableSpace > requiredWithBuffer;
+    const filePath = getCacheFilePath(filename);
+    const file = new File(filePath);
+    return file.exists ? filePath : null;
   } catch (error) {
-    console.warn('[FileUtils] Error checking storage space:', error);
-    // On error, assume we have space (fail-safe approach)
-    return true;
+    console.warn('[FileUtils] Error finding cached file:', error);
+    return null;
   }
 };
 
@@ -157,22 +150,20 @@ export const formatFileSize = (bytes: number): string => {
  * Used for cleanup and corruption recovery
  * Uses new File API
  *
- * @param attachmentId - Unique identifier for the attachment
  * @param filename - Original filename
  * @returns true if file was deleted or didn't exist
  */
 export const deleteCachedFile = async (
-  attachmentId: string,
   filename: string
 ): Promise<boolean> => {
   try {
-    const filePath = getCacheFilePath(attachmentId, filename);
+    const filePath = getCacheFilePath(filename);
     const file = new File(filePath);
 
     // Check if file exists before deleting
     if (file.exists) {
-      await file.delete();
-      console.log('[FileUtils] Deleted corrupted file:', filePath);
+      file.delete();
+      console.log('[FileUtils] Deleted file from cache:', filename);
       return true;
     }
     return true;
@@ -187,19 +178,18 @@ export const deleteCachedFile = async (
  * Reads file info to get size in bytes
  * Uses new File API
  *
- * @param attachmentId - Unique identifier for the attachment
- * @param filename - Original filename
  * @returns File size in bytes, or 0 if file doesn't exist
+ * @param path
  */
-export const getCachedFileSize = async (
-  attachmentId: string,
-  filename: string
-): Promise<number> => {
+export const getCachedFileSize = (
+  path :string
+): number => {
   try {
-    const filePath = getCacheFilePath(attachmentId, filename);
-    const file = new File(filePath);
+    const file = new File(path);
 
     if (file.exists && file.size) {
+      console.log("File exist", file.exists, " size: ", file.size);
+      
       return file.size;
     }
     return 0;
@@ -209,37 +199,6 @@ export const getCachedFileSize = async (
   }
 };
 
-/**
- * Get the number of files currently in the cache directory
- *
- * @returns Number of cached files
- */
-export const getCachedFileCount = (): number => {
-  try {
-    const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
-    const items = cacheDir.list();
-    return items.filter((item) => item instanceof File).length;
-  } catch {
-    return 0;
-  }
-};
-
-/**
- * Check if the cache has room for more files
- *
- * @returns true if the number of cached files is below MAX_CACHED_FILES
- */
-export const isCacheFull = (): boolean => {
-  return getCachedFileCount() >= MAX_CACHED_FILES;
-};
-
-/**
- * Clear entire attachments cache directory
- * Use with caution - removes all cached attachments
- * Uses new Directory API
- *
- * @returns true if cache was cleared successfully
- */
 export const clearAttachmentsCache = async (): Promise<boolean> => {
   try {
     const cacheDir = new Directory(ATTACHMENTS_CACHE_DIR);
@@ -249,7 +208,7 @@ export const clearAttachmentsCache = async (): Promise<boolean> => {
       const items = cacheDir.list();
       for (const item of items) {
         if (item instanceof File) {
-          await item.delete();
+          item.delete();
         }
       }
       console.log('[FileUtils] Cleared attachments cache');
