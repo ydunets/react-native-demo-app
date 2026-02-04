@@ -65,6 +65,7 @@
     "rn-icon-mapper": "^0.0.1",
     "tailwind-merge": "^2.2.1",
     "toastify-react-native": "^7.2.3",
+    "valtio": "^2.3.0",
     "zustand": "^4.5.7"
   },
   "devDependencies": {

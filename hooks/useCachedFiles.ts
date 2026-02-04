@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Directory, File } from 'expo-file-system';
 import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
 import { clearAttachmentsCache, deleteCachedFile } from '@/lib/files';
-import { useInFlightAttachmentId } from '@/stores/downloadQueue';
+import { useCurrentCommandId } from '@/stores/downloadQueue/valtioHooks';
 import type { DownloadMessageAttachmentsContextType } from '@/contexts/downloadMessageAttachments';
 
 export interface CachedFile {
@@ -30,7 +30,7 @@ export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsConte
   const [totalSize, setTotalSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
-  const inFlightId = useInFlightAttachmentId();
+  const currentCommandId = useCurrentCommandId();
 
   const loadCachedFiles = useCallback(() => {
     try {
@@ -60,7 +60,7 @@ export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsConte
           name: item.name,
           size: fileSize,
           path: item.uri,
-          isInFlight: item.name === inFlightId,
+          isInFlight: item.name === currentCommandId,
         });
       }
 
@@ -76,7 +76,7 @@ export const useCachedFiles = (downloadContext?: DownloadMessageAttachmentsConte
     } finally {
       setIsLoading(false);
     }
-  }, [inFlightId]);
+  }, [currentCommandId]);
 
   const clearCache = useCallback(async () => {
     setIsClearing(true);

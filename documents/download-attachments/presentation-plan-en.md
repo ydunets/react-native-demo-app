@@ -130,11 +130,15 @@ FUNCTIONAL REQUIREMENTS:
 ├─────────────────────────────────────┤
 │ React Context API                   │  ← Queue provider
 ├─────────────────────────────────────┤
-│ Expo FileSystem                     │  ← Local storage
+│ expo-file-system                    │  ← File caching (Directory/File API)
 ├─────────────────────────────────────┤
-│ RNFetchBlob                         │  ← File downloads
+│ react-native-blob-util              │  ← HTTP downloads with progress
 ├─────────────────────────────────────┤
-│ NetInfo / AppState                  │  ← Network/state monitoring
+│ @react-native-community/netinfo     │  ← Network monitoring
+├─────────────────────────────────────┤
+│ React Native AppState               │  ← App state monitoring
+├─────────────────────────────────────┤
+│ React Query                         │  ← Message data fetching
 └─────────────────────────────────────┘
 ```
 
@@ -145,65 +149,82 @@ FUNCTIONAL REQUIREMENTS:
 #### **Slide 5: Architecture Overview - System Components**
 
 ```
-THREE-LAYER ARCHITECTURE
+THREE-LAYER IMPLEMENTATION ARCHITECTURE
 
 ┌─────────────────────────────────────────────────┐
-│ 🎯 LAYER 1: INITIATION                          
+│ 🎯 LAYER 1: INITIATION AND MONITORING           
 │                                                 
 │  useDownloadMessageAttachments (Hook)          
-│  ├─ Retrieves all message attachments          
-│  ├─ Monitors network (NetInfo)                 
-│  ├─ Monitors app state                         
-│  └─ Starts queue on restoration                
+│  ├─ useNetInfo: Network monitoring             
+│  ├─ useAppState: Application state             
+│  ├─ useMessageAttachments: Attachment data     
+│  └─ Auto-trigger activation effect             
 └─────────────────┬───────────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────────┐
-│ ⚙️ LAYER 2: COORDINATION                        
+│ ⚙️ LAYER 2: COORDINATION AND CONTEXT            
 │                                                 
 │  DownloadMessageAttachmentsContext             
-│  ├─ Provides download API                      
-│  ├─ Manages pause/resume                       
-│  └─ Coordinates priority downloads             
+│  ├─ downloadFile: Single file download         
+│  ├─ downloadFileFromMessage: Priority download 
+│  ├─ processQueue: Processing coordination      
+│  └─ Progress store integration (minimal)       
 └─────────────────┬───────────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────────┐
-│ 🔄 LAYER 3: QUEUE PROCESSING                    
+│ 🔄 LAYER 3: QUEUE MANAGEMENT (useRef-based)     
 │                                                 
 │  useManageProcessingQueue (Internal Hook)      
-│  ├─ Manages command array (useRef)             
-│  ├─ shouldStop flag (Proxy for reactivity)     
-│  └─ isProcessing state (useState)              
+│  ├─ queueRef: Command array (useRef)           
+│  ├─ shouldStopProxy: Stop flag (Object)        
+│  ├─ isProcessing: Processing state (useRef)    
+│  └─ addCommand, pauseProcessing, resetQueue    
 └─────────────────────────────────────────────────┘
+
+ADDITIONAL COMPONENTS:
+• expo-file-system: File caching
+• react-native-blob-util: HTTP downloads
+• useDownloadProgressStore: Progress tracking (Zustand)
+• useAuthStore: Authentication tokens (Zustand)
 ```
 
 **Speaker Notes:**
 
-The system is divided into three layers of responsibility - each solves its own task without interfering with others.
+The system is divided into three main layers - each solving its own task without interfering with others.
 
-**Layer 1 - Initiation:**
-- Located at the top - it's the "observer"
-- Monitors two critical events: network changes and app state
-- When WiFi turns on → automatically sends signal down (arrow ↓)
+**Layer 1 - Initiation and Monitoring:**
+- Combines all monitoring hooks in a single place
+- Tracks network (useNetInfo), app state (useAppState), and message data
+- Automatically activates queue when all conditions are met
 
-**Layer 2 - Coordination:**
-- Middle layer - the "dispatcher"
-- Receives commands from above and passes them down
-- Provides methods for UI (`downloadFileFromMessage`)
-- Manages pause/resume of the queue
+**Layer 2 - Coordination and Context:**
+- React Context as central interface for all operations
+- Provides single-file and priority download capabilities
+- Minimal Zustand integration (only progress and auth)
 
-**Layer 3 - Processing:**
-- Bottom layer - the "worker"
-- Performs actual file downloads
-- Uses useRef for queue, Proxy for stopping, useState for UI
+**Layer 3 - Queue Management (useRef-based):**
+- Fully useRef-based queue
+- queueRef.current - command array without re-renders
+- shouldStopProxy - simple object for stop control
+- isProcessing.current - also useRef, not useState!
 
-**Data flow (follow the arrows):**
+**Zustand usage is MINIMAL:**
+- useDownloadProgressStore - only for UI progress display
+- useAuthStore - for token retrieval
+
+**Data flow:**
 ```
-1. NetInfo detects network (Layer 1)
+1. Monitors detect changes (Layer 1)
    ↓
-2. Context receives signal (Layer 2)
+2. Context receives start signal (Layer 2)
    ↓
-3. Queue starts processing (Layer 3)
+3. useRef-queue starts processing (Layer 3)
 ```
+
+**Why useRef instead of Zustand?**
+- Maximum performance (zero re-renders)
+- Implementation simplicity
+- Queue is an internal implementation detail, not global state
 
 **Why three layers instead of one big component?**
 - Easier to test (each layer separately)

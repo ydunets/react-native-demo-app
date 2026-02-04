@@ -8,13 +8,11 @@ import { useAppState } from './useAppState';
 import { useNetInfo } from './useNetInfo';
 import { fileExistsInCache } from '@/lib/files';
 import { useIsLoggedIn } from '@/stores/auth';
-import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';
+import { useIsProcessing } from '@/stores/downloadQueue/valtioHooks';
 
 export const useDownloadMessageAttachments = () => {
-  const {
-    isProcessing,
-  } = useManageProcessingQueue();
-  const { addCommand, startProcessing, resetQueue, cancelCurrentDownload } =
+  const isProcessing = useIsProcessing();
+  const { addCommand, runProcessing, resetQueue, cancelCurrentDownload } =
     useDownloadMessageAttachmentsContext();
   const { attachments, isSuccess } = useMessageAttachments();
   const { isAppActive } = useAppState();
@@ -57,12 +55,18 @@ export const useDownloadMessageAttachments = () => {
   );
 
   const startDownloads = useCallback(async () => {
-    console.log("\x1b[36m", "[File Processing] Starting downloads:", attachments.length, "attachments", "\x1b[0m");
+    console.log(
+      '\x1b[36m',
+      '[File Processing] Starting downloads:',
+      attachments.length,
+      'attachments',
+      '\x1b[0m'
+    );
     if (!attachments.length) {
       console.log('\x1b[90m', '[File Processing] No attachments to process', '\x1b[0m');
       return;
     }
-    if (isProcessing.current) {
+    if (isProcessing) {
       console.log('\x1b[33m', '[File Processing] Downloads already in progress', '\x1b[0m');
       return;
     }
@@ -71,21 +75,34 @@ export const useDownloadMessageAttachments = () => {
       console.log('\x1b[33m', '[File Processing] Not authenticated, downloads paused', '\x1b[0m');
       return;
     }
-    
-    if(!isAppActive) {
+
+    if (!isAppActive) {
       console.log('\x1b[33m', '[File Processing] App is not active, downloads paused', '\x1b[0m');
       return;
     }
 
-    if(!isConnected) {
+    if (!isConnected) {
       cancelCurrentDownload();
-      console.log('\x1b[33m', '[File Processing] No internet connection, downloads paused', '\x1b[0m');
+      console.log(
+        '\x1b[33m',
+        '[File Processing] No internet connection, downloads paused',
+        '\x1b[0m'
+      );
       return;
     }
 
     await addFilesToProcessingQueue(attachments);
-    await startProcessing();
-  }, [attachments, isProcessing, isAuthenticated, isAppActive, isConnected, addFilesToProcessingQueue, startProcessing, cancelCurrentDownload]);
+    await runProcessing();
+  }, [
+    attachments,
+    isProcessing,
+    isAuthenticated,
+    isAppActive,
+    isConnected,
+    addFilesToProcessingQueue,
+    runProcessing,
+    cancelCurrentDownload,
+  ]);
 
   useEffect(() => {
     if (!isSuccess) return;

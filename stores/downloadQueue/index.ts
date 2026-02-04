@@ -1,29 +1,34 @@
-export { useDownloadQueueStore } from './downloadQueueStore';
+// Valtio state and actions
 export {
-  useDownloadQueueActions,
+  downloadQueueState,
+  downloadQueueActions,
+  downloadQueueMMKV,
+  type QueueStatus,
+} from './valtioState';
+
+// Valtio hooks
+export {
+  useQueueSnapshot,
   useQueue,
   useIsProcessing,
-  useCompletedIds,
   useQueueCount,
   useCompletedCount,
-  useInFlightAttachmentId,
-} from './hooks';
-export {
-  selectDownloadQueueActions,
-  selectQueue,
-  selectIsProcessing,
-  selectCompletedIds,
-  selectQueueCount,
-  selectCompletedCount,
-  selectInFlightId,
-  selectCompletedIdsAsSet,
-  selectIsCompleted,
-  selectPausedDueToStorage,
-  selectPausedDueToAuth,
-} from './selectors';
-export type {
-  DownloadCommand,
-  DownloadQueueState,
-  DownloadQueueActions,
-  DownloadQueueStore,
-} from './types';
+  useProgressPercentage,
+  useCurrentCommand,
+  useCurrentCommandId,
+  useQueueStatus,
+  useIsIdle,
+  useHasQueuedItems,
+  useIsPaused,
+  usePausedDueToAuth,
+  usePausedDueToBackground,
+  usePausedDueToMessageDownload,
+  useQueueActions,
+  useQueueStateRef,
+  useQueueProgress,
+  useQueueManager,
+  useIsCompleted,
+} from './valtioHooks';
+
+// Types
+export type { DownloadCommand } from './types';

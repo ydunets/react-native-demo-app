@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useIsProcessing, useQueueCount, useCompletedCount } from '@/stores/downloadQueue';
+import { useIsProcessing, useQueueCount, useCompletedCount } from '@/stores/downloadQueue/valtioHooks';
 import { useDownloadedCount, useFailedCount } from '@/stores/downloadStats';
 
 export function DownloadToast() {
