@@ -8,11 +8,10 @@ import { useAppState } from './useAppState';
 import { useNetInfo } from './useNetInfo';
 import { fileExistsInCache } from '@/lib/files';
 import { useIsLoggedIn } from '@/stores/auth';
-import { useIsProcessing } from '@/stores/downloadQueue/valtioHooks';
+import { downloadQueueState } from '@/stores/downloadQueue/valtioState';
 
 export const useDownloadMessageAttachments = () => {
-  const isProcessing = useIsProcessing();
-  const { addCommand, runProcessing, resetQueue, cancelCurrentDownload } =
+  const{ addCommand, runProcessing, resetQueue, cancelCurrentDownload } =
     useDownloadMessageAttachmentsContext();
   const { attachments, isSuccess } = useMessageAttachments();
   const { isAppActive } = useAppState();
@@ -66,7 +65,10 @@ export const useDownloadMessageAttachments = () => {
       console.log('\x1b[90m', '[File Processing] No attachments to process', '\x1b[0m');
       return;
     }
-    if (isProcessing) {
+    
+    // Read isProcessing directly from proxy to avoid stale closure issues
+    // This prevents useEffect re-triggering when isProcessing changes
+    if (downloadQueueState.isProcessing) {
       console.log('\x1b[33m', '[File Processing] Downloads already in progress', '\x1b[0m');
       return;
     }
@@ -95,7 +97,6 @@ export const useDownloadMessageAttachments = () => {
     await runProcessing();
   }, [
     attachments,
-    isProcessing,
     isAuthenticated,
     isAppActive,
     isConnected,
