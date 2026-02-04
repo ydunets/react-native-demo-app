@@ -5,7 +5,10 @@ import {
   useContext,
   useMemo,
 } from 'react';
-import useManageProcessingQueue from '@/hooks/useManageProcessingQueue';  
+import {
+  downloadQueueState,
+  downloadQueueActions,
+} from '@/stores/downloadQueue/valtioState';
 
 import RNFetchBlob, { type FetchBlobResponse, type StatefulPromise } from 'react-native-blob-util';
 import { getCacheFilePath, makeCacheDirectory, deleteCachedFile, fileExistsInCache } from '@/lib/files';
@@ -19,12 +22,12 @@ const DOWNLOAD_DELAY_MS = 2000;
 
 export type DownloadMessageAttachmentsContextType = {
   addCommand: (command: DownloadCommand) => void;
-  resumeProcessing: () => Promise<void>;
+  resumeProcessing: () => void;
   resetQueue: () => void;
-  pauseProcessing: () => Promise<void>;
+  pauseProcessing: () => void;
   processQueue: () => Promise<void>;
   downloadFile: (command: DownloadCommand) => Promise<string | undefined>;
-  startProcessing: () => Promise<void>;
+  runProcessing: () => Promise<void>;
   downloadFileFromMessage: (attachment: Attachment) => Promise<string | undefined>;
   cancelCurrentDownload: () => void;
 };
@@ -32,12 +35,12 @@ export type DownloadMessageAttachmentsContextType = {
 export const DownloadMessageAttachmentsContext =
   createContext<DownloadMessageAttachmentsContextType>({
     addCommand: () => {},
-    resumeProcessing: () => Promise.resolve(),
+    resumeProcessing: () => {},
     resetQueue: () => {},
-    pauseProcessing: () => Promise.resolve(),
+    pauseProcessing: () => {},
     processQueue: () => Promise.resolve(),
     downloadFile: () => Promise.resolve(undefined),
-    startProcessing: () => Promise.resolve(),
+    runProcessing: () => Promise.resolve(),
     downloadFileFromMessage: () => Promise.resolve(undefined),
     cancelCurrentDownload: () => Promise.resolve(),
   });
@@ -54,17 +57,22 @@ export const useDownloadMessageAttachmentsContext = () => {
 
 
 export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildren) => {
-  const {
-    queueRef,
-    shouldStopProxy,
-    addCommand,
-    pauseProcessing,
-    isProcessing,
-    resetQueue,
-  } = useManageProcessingQueue();
   const progressActions = useDownloadProgressStore((state) => state.actions);
   const currentTaskRef = useRef<StatefulPromise<FetchBlobResponse>>(null);
 
+  // Destructure actions for cleaner usage
+  const {
+    addCommand,
+    removeCommand,
+    startProcessing,
+    pauseProcessing,
+    pauseDueToAuth,
+    pauseDueToMessageDownload,
+    resumeProcessing,
+    completeCurrentCommand,
+    completeProcessing,
+    resetQueue,
+  } = downloadQueueActions;
   const downloadFile = async ({ filename }: Omit<DownloadCommand,"id">) => {
     // Get current auth state (same pattern as axios interceptor)
     const { tokens } = useAuthStore.getState();
@@ -76,6 +84,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
         '[File Download] No access token available, cannot download file',
         '\x1b[0m'
       );
+      pauseDueToAuth();
       return undefined;
     }
 
@@ -141,39 +150,36 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
   };
 
   const processQueue = async () => {
-    isProcessing.current = true;
-    const totalFiles = queueRef.current.length;
+    startProcessing();
+    const totalFiles = downloadQueueState.queueCount;
 
-    while (queueRef.current.length) {
-      const currentCommand = queueRef.current[0];
-      const currentFileNumber = totalFiles - queueRef.current.length + 1;
+    while (downloadQueueState.hasQueuedItems) {
+      const currentCommand = downloadQueueState.currentCommand;
+      if (!currentCommand) break;
+      
+      const currentFileNumber = totalFiles - downloadQueueState.queueCount + 1;
       
       progressActions.setProgress(currentFileNumber, totalFiles, currentCommand.filename);
       
-      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${queueRef.current.length} - ${currentCommand.filename}`, '\x1b[0m');
+      console.log('\x1b[33m', `[File Processing] Processing queue remaining ${downloadQueueState.queueCount} - ${currentCommand.filename}`, '\x1b[0m');
       const result = await downloadFile(currentCommand);
 
       if (!result) {
         break;
       }
 
-      queueRef.current.shift();
+      // Mark completed and remove from queue (immutable)
+      completeCurrentCommand();
 
-      if (shouldStopProxy.shouldStop) {
+      if (downloadQueueState.shouldStop) {
         console.log('\x1b[35m', '[File Processing] Stop processing', '\x1b[0m');
-        shouldStopProxy.shouldStop = false;
+        completeProcessing();
         break;
       }
     }
 
-    isProcessing.current = false;
+    completeProcessing();
     progressActions.resetProgress();
-  };
-
-  const resumeProcessing = async () => {
-    isProcessing.current = true;
-    console.log('\x1b[32m', '[File Processing] New processing queue started', '\x1b[0m');
-    await processQueue();
   };
 
   const downloadFileFromMessage = async (attachment: Attachment) => {
@@ -186,29 +192,31 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       return getCacheFilePath(filename);
     }
 
-    await pauseProcessing();
+    // Pause queue processing for priority download
+    pauseDueToMessageDownload();
 
     const filePath = await downloadFile({
       filename,
     });
 
-    queueRef.current = queueRef.current.filter(command => command.filename !== filename);
+    // Remove this file from queue if it was queued
+    removeCommand(attachment.id);
 
     console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
 
-    await resumeProcessing();
+    resumeProcessing();
     
     return filePath;
   };
 
-  const startProcessing = async () => {
-    // Synchronous check using ref to prevent race condition
-    if (isProcessing.current) {
-      console.log('\x1b[33m', '[File Processing] Already processing (blocked by ref), skipping start', '\x1b[0m');
+  const runProcessing = async () => {
+    // Synchronous check using Valtio proxy to prevent race condition
+    if (downloadQueueState.isProcessing) {
+      console.log('\x1b[33m', '[File Processing] Already processing (blocked by state), skipping start', '\x1b[0m');
       return;
     }
 
-    if (!queueRef.current.length) {
+    if (!downloadQueueState.hasQueuedItems) {
       console.log('\x1b[90m', '[File Processing] No items in queue, processing not started', '\x1b[0m');
       return;
     }
@@ -230,11 +238,12 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       pauseProcessing,
       processQueue,
       downloadFile,
-      startProcessing,
+      runProcessing,
       downloadFileFromMessage,
       cancelCurrentDownload
     }),
-    [isProcessing.current]
+    // Actions are stable, no deps needed
+    []
   );
 
   return (
