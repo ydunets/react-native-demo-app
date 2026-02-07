@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthStore>()(
               user: null,
               isLoggedIn: false,
             });
-
+            
             console.log('Logged out from Keycloak');
           } catch (error) {
             console.error('Error logging out from Keycloak:', error);

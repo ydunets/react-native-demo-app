@@ -69,6 +69,7 @@ export const useDownloadMessageAttachments = () => {
     // Read isProcessing directly from proxy to avoid stale closure issues
     // This prevents useEffect re-triggering when isProcessing changes
     if (downloadQueueState.isProcessing) {
+      console.log(downloadQueueState.isProcessing);
       console.log('\x1b[33m', '[File Processing] Downloads already in progress', '\x1b[0m');
       return;
     }
@@ -107,6 +108,6 @@ export const useDownloadMessageAttachments = () => {
 
   useEffect(() => {
     if (!isSuccess) return;
-    startDownloads()
+    startDownloads();
   }, [startDownloads, isSuccess]);
 };

@@ -137,6 +137,17 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       currentTaskRef.current = null;
       return expoPath;
     } catch (error) {
+      currentTaskRef.current = null;
+      
+      // Check if this was a cancellation (not a real error)
+      const isCancelled = error instanceof Error && 
+        (error.message.includes('canceled') || error.name === 'ReactNativeBlobUtilCanceledFetch');
+      
+      if (isCancelled) {
+        console.log('\x1b[33m', `[Download] Cancelled: ${filename}`, '\x1b[0m');
+        return undefined;
+      }
+      
       console.warn(
         '\x1b[31m',
         `[DownloadContext] Error downloading file ${filename}`,
@@ -150,10 +161,23 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
   };
 
   const processQueue = async () => {
+    // Check authentication before starting
+    const { tokens } = useAuthStore.getState();
+    if (!tokens?.accessToken) {
+      console.log('\x1b[33m', '[File Processing] Not authenticated, cannot start processing', '\x1b[0m');
+      return;
+    }
+
     startProcessing();
     const totalFiles = downloadQueueState.queueCount;
 
     while (downloadQueueState.hasQueuedItems) {
+      // Check if we should pause before starting next download
+      if (downloadQueueState.isPaused) {
+        console.log('\x1b[35m', '[File Processing] Queue paused, stopping loop', '\x1b[0m');
+        break;
+      }
+
       const currentCommand = downloadQueueState.currentCommand;
       if (!currentCommand) break;
       
@@ -171,9 +195,9 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       // Mark completed and remove from queue (immutable)
       completeCurrentCommand();
 
-      if (downloadQueueState.shouldStop) {
-        console.log('\x1b[35m', '[File Processing] Stop processing', '\x1b[0m');
-        completeProcessing();
+      // Check pause state after each file completes
+      if (downloadQueueState.isPaused) {
+        console.log('\x1b[35m', '[File Processing] Paused after file completion', '\x1b[0m');
         break;
       }
     }
@@ -192,8 +216,11 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       return getCacheFilePath(filename);
     }
 
-    // Pause queue processing for priority download
+    // Pause queue processing and cancel current download for priority
     pauseDueToMessageDownload();
+    await currentTaskRef.current?.cancel(() => {
+      console.log('\x1b[31m', '[File Processing] Current download cancelled for priority file', '\x1b[0m');
+    });
 
     const filePath = await downloadFile({
       filename,
@@ -204,7 +231,14 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
 
     console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
 
-    resumeProcessing();
+    // Resume queue processing (will restart from where it left off)
+    // Only resume if authenticated and has items
+    const { tokens } = useAuthStore.getState();
+    if (downloadQueueState.hasQueuedItems && tokens?.accessToken) {
+      resumeProcessing();
+      // Re-trigger queue processing
+      processQueue();
+    }
     
     return filePath;
   };

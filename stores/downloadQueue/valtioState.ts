@@ -197,14 +197,38 @@ export const downloadQueueActions = {
   },
 
   /**
-   * Resume processing after pause
+   * Resume processing after explicit pause (e.g., after priority download)
+   * Only sets isProcessing if there are items to process
    */
   resumeProcessing() {
     downloadQueueState.shouldStop = false;
     downloadQueueState.pausedDueToAuth = false;
     downloadQueueState.pausedDueToBackground = false;
     downloadQueueState.pausedDueToMessageDownload = false;
-    downloadQueueState.isProcessing = true;
+    // Only set isProcessing if there are items to process
+    if (downloadQueueState.hasQueuedItems) {
+      downloadQueueState.isProcessing = true;
+    }
+  },
+
+  /**
+   * Resume from background - only resumes if was actually paused due to background
+   * Returns true if processing should continue
+   */
+  resumeFromBackground(): boolean {
+    // Only resume if we were paused specifically due to background
+    if (!downloadQueueState.pausedDueToBackground) {
+      return false;
+    }
+    
+    downloadQueueState.pausedDueToBackground = false;
+    
+    // Only set isProcessing if there are items to process
+    if (downloadQueueState.hasQueuedItems) {
+      downloadQueueState.isProcessing = true;
+      return true;
+    }
+    return false;
   },
 
   /**
@@ -234,7 +258,7 @@ export const downloadQueueActions = {
   },
 
   /**
-   * Reset entire queue to initial state
+   * Reset entire queue to initial state and clear persisted storage
    */
   resetQueue() {
     downloadQueueState.queue = [];
@@ -245,6 +269,8 @@ export const downloadQueueActions = {
     downloadQueueState.pausedDueToMessageDownload = false;
     downloadQueueState.shouldStop = false;
     downloadQueueState.totalCount = 0;
+    // Clear persisted state to ensure clean slate on next login
+    downloadQueueMMKV.remove(QUEUE_MMKV_KEY);
   },
 
   /**

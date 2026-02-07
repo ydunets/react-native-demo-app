@@ -14,8 +14,8 @@ export function useAppState() {
         downloadQueueActions.pauseDueToBackground()
       } else if (newState === "active") {
         console.log("App came to foreground")
-        // Resume download queue when app comes back to foreground
-        downloadQueueActions.resumeProcessing()
+        // Resume download queue only if it was paused due to background
+        downloadQueueActions.resumeFromBackground()
       }
 			setAppState(newState)
 		}
