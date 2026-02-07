@@ -40,3 +40,4 @@ backend/coverage
 logs/
 .claude
 .github
+.vscode
