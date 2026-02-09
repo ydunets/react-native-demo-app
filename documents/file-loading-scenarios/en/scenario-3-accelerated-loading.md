@@ -4,8 +4,8 @@
 This scenario describes the priority download mechanism that occurs when a user clicks on a file attachment within a message during an active download queue. The system temporarily pauses the queue to provide immediate file access.
 
 ## Technical Implementation
-- **Priority Download**: `hooks/useDownloadMessageAttachments.tsx`
-- **Queue Management**: `hooks/useManageProcessingQueue.tsx`
+- **Priority Download**: `contexts/downloadMessageAttachments.tsx`
+- **Queue State + Pause Flags**: `stores/downloadQueue/valtioState.ts`
 - **Cache Check**: `lib/files.ts`
 - **Message UI**: Message attachment click handlers
 
@@ -24,10 +24,10 @@ This scenario describes the priority download mechanism that occurs when a user 
 4. If not cached, triggers priority download process
 
 ### Step 3: Priority Download Activation
-1. Current queue processing is paused immediately
-2. Priority download begins for the clicked file
-3. Network connection switches to the requested file
-4. Queue shows "Priority download in progress" status
+1. Queue processing is paused via `pauseDueToMessageDownload()`
+2. Current in-flight download is cancelled (RNFetchBlob cancel)
+3. Priority download begins for the clicked file
+4. Queue status reflects the paused state
 
 ### Step 4: Accelerated Processing
 1. Clicked file downloads with full network priority
@@ -39,8 +39,8 @@ This scenario describes the priority download mechanism that occurs when a user 
 1. Priority file download completes
 2. File opens automatically (e.g., PDF viewer)
 3. File is removed from regular queue if it was queued
-4. Normal queue processing resumes
-5. Queue continues with next file in sequence
+4. Message-download pause flag is cleared
+5. Queue resumes only if authenticated and not paused for background/auth
 
 ## Technical Flow
 
@@ -56,6 +56,37 @@ Continue → Handle Click → Begin Download → Show Progress
 Normal → Download File → Complete → Resume Queue
 ```
 
+```mermaid
+sequenceDiagram
+      autonumber
+      participant U as User
+      participant Q as Queue
+      participant D as Downloader
+      participant C as Cache
+
+      U->>Q: Tap attachment
+      activate Q
+      note over Q: Queue already processing (all files added)
+      Q->>C: Check cache
+      C-->>Q: Response
+
+      alt Cached
+            Q-->>U: Open file
+      else Not cached
+            Q->>Q: pauseDueToMessageDownload()
+            Q->>D: Cancel in-flight download
+            Q->>D: Download priority file
+            activate D
+            D-->>Q: Result
+            deactivate D
+            Q->>Q: clearPauseDueToMessageDownload()
+            Q->>Q: Resume if queue has items
+            Q-->>U: Open file on success
+      end
+      deactivate Q
+```
+```
+
 ## Key Features
 
 ### Immediate Cache Check
@@ -64,8 +95,8 @@ Normal → Download File → Complete → Resume Queue
 - Direct file opening for cached content
 
 ### Queue Pausing
-- Active downloads stop immediately
-- Current progress preserved
+- Active downloads are cancelled to free the pipeline
+- Current progress for the cancelled file is discarded
 - Queue state maintained during priority download
 
 ### Priority Processing
@@ -88,11 +119,11 @@ Normal → Download File → Complete → Resume Queue
 
 ### Cache Miss (Priority Download)
 1. User clicks attachment
-2. Queue processing pauses
+2. Current download is cancelled and queue pauses
 3. Priority download begins immediately
 4. File downloads with progress indication
 5. File opens upon completion
-6. Queue resumes normal processing
+6. Queue resumes if not paused for other reasons
 
 ### Queue Integration
 - File removed from queue if it was already queued
@@ -107,10 +138,8 @@ Normal → Download File → Complete → Resume Queue
 - Instant user satisfaction
 
 ### Priority Download Active
-- Progress bar for priority file
-- Text: "Loading [filename] - Priority download"
-- Queue status: "Queue paused for priority download"
-- Cancel option available
+- Spinner on the tapped attachment
+- Queue status remains paused during priority download
 
 ### Completion Transition
 - File opens automatically
@@ -146,9 +175,11 @@ const downloadFileFromMessage = async (attachment: Attachment) => {
   }
   
   // 2. Priority download if not cached
-  await pauseProcessing();
-  const filePath = await downloadFile({ filename });
-  await resumeProcessing();
+      pauseDueToMessageDownload();
+      await currentTaskRef.current?.cancel();
+      const filePath = await downloadFile({ filename });
+      clearPauseDueToMessageDownload();
+      resumeProcessing();
   
   return filePath;
 };
@@ -170,13 +201,11 @@ const downloadFileFromMessage = async (attachment: Attachment) => {
 
 ### Multiple Priority Requests
 - Only one priority download at a time
-- Subsequent clicks queue as priority requests
-- First-come-first-served for priority queue
+- Subsequent clicks trigger a new priority download after the current one finishes
 
 ### Network Failures During Priority
 - Error handling specific to priority downloads
-- Automatic retry mechanism
-- Option to add to regular queue on failure
+- Failed priority downloads do not auto-retry
 
 ### Queue State Conflicts
 - Duplicate file removal from regular queue

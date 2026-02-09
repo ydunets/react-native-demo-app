@@ -2,354 +2,296 @@
 
 ## 1. Цель реализации
 
+RU
+
 Реализовать **очередь загрузки вложений сообщений** с поддержкой:
 
-- Автоматического управления очередью при восстановлении сетевого подключения
-- Приостановки/возобновления обработки без потери данных
-- Приоритизации срочных загрузок (прерывание текущей очереди)
-- Кэширования файлов в локальной файловой системе
-- Отслеживания состояния обработки (активно/неактивно)
-- Мгновенного открытия ранее загруженных файлов без интернет-соединения (оффлайн-доступ из кэша)
+- Автоматической паузы/возобновления при переходе приложения в фон и обратно
+- Перезапуска обработки при возвращении в активное состояние (при наличии элементов в очереди)
+- Приоритизации срочных загрузок с отменой текущей и временной паузой очереди
+- Кэширования файлов и мгновенного открытия ранее загруженных вложений
+- Отслеживания состояния очереди (active/paused/queued/idle)
+
+EN
+
+Implement a **message attachment download queue** with support for:
+
+- Automatic pause/resume on background/foreground transitions
+- Restarting processing on app return when the queue still has items
+- Priority downloads that cancel the current transfer and temporarily pause the queue
+- Local file caching with instant open for cached attachments
+- Queue state tracking (active/paused/queued/idle)
+
+RU
+
+### Слайд: Как работает загрузка файлов
+
+- Вложения собираются, проверяются по кэшу и добавляются в очередь
+- Очередь запускает последовательную загрузку одного файла за раз
+- Пауза/возобновление зависят от сети, app state и авторизации
+- Приоритетная загрузка временно останавливает очередь и качает нужный файл
+
+EN
+
+### Slide: How file loading works
+
+- Attachments are collected, cache-checked, and queued
+- The queue downloads one file at a time sequentially
+- Pause/resume depends on network, app state, and auth
+- Priority download temporarily pauses the queue to fetch the requested file
+
+RU
+
+### Слайд: Шаги загрузки файлов (внутри контекста)
+
+- Проверка токена и подготовка пути сохранения
+- Старт RNFetchBlob-загрузки с прогрессом и сохранением в кэш
+- Успех: возврат пути файла, ошибка: очистка кэша и остановка текущего шага
+
+
+
+RU
+
+### Слайд: Шаги реализации (реальный пример)
+
+1. Получаем вложения, фильтруем кэш, добавляем команды в очередь
+2. Запускаем `runProcessing()` и скачиваем файлы по одному через RNFetchBlob
+3. Обновляем прогресс, отмечаем завершенные команды, состояние сохраняется в MMKV
+4. При уходе в фон — пауза, при возвращении — проверка условий и возобновление
+5. Приоритетная загрузка: отменяем текущую, скачиваем нужный файл, возвращаем очередь
+
+EN
+
+### Implementation steps (real example)
+
+1. Fetch attachments, filter cache, enqueue download commands
+2. Start `runProcessing()` and download files one by one with RNFetchBlob
+3. Update progress, mark completed commands, state persists to MMKV
+4. On background — pause, on return — re-check conditions and resume
+5. Priority download: cancel current, fetch requested file, resume the queue
+
+RU
+
+### Слой 1 - Инициация и мониторинг
+
+- Все условия запуска собраны в одном месте (`useDownloadMessageAttachments`)
+- Отслеживаются сеть (`useNetInfo`), состояние приложения (`useAppState`) и данные сообщений (`useMessageAttachments`)
+- Очередь запускается автоматически, когда выполнены условия (авторизация, сеть, активное состояние)
+
+### Слой 2 - Координация и контекст
+
+- React Context как единая точка входа для операций загрузки
+- Поддержка одиночной и приоритетной загрузки с отменой текущей
+- Zustand используется для состояния прогресса и авторизации
+
+### Слой 3 - Управление очередью (Valtio)
+
+- Valtio хранит состояние очереди и флаги паузы
+- Цикл обработки и скачивание файлов выполняются в `contexts/downloadMessageAttachments.tsx`
+- Пауза/возобновление управляются флагами `pausedDueTo*` и `isProcessing`
+
+EN
+
+### Layer 1 - Initiation and Monitoring
+
+- All start conditions are centralized in `useDownloadMessageAttachments`
+- Tracks network (`useNetInfo`), app state (`useAppState`), and message data (`useMessageAttachments`)
+- Automatically starts the queue when conditions are met (auth, network, active state)
+
+### Layer 2 - Coordination and Context
+
+- React Context as the single entry point for download operations
+- Supports single-file and priority downloads with cancel of the current transfer
+- Zustand is used for progress and auth state
+
+### Layer 3 - Queue Management (Valtio)
+
+- Valtio stores queue state and pause flags
+- Processing loop and file downloads run in `contexts/downloadMessageAttachments.tsx`
+- Pause/resume is driven by `pausedDueTo*` flags and `isProcessing`
+
+RU
+
+### Ключевые библиотеки (текущая реализация)
+
+- Expo File System — проверка кэша, сохранение файлов, оффлайн-доступ
+- RN Fetch Blob Util — бинарные загрузки, прогресс, обработка больших файлов
+- NetInfo / AppState — контроль сети и состояния приложения, автопауза/возврат
+- React Context API — единый API загрузок и координация очереди
+- Valtio — состояние очереди и флаги паузы, подготовка к восстановлению
+
+EN
+
+### Key libraries (current implementation)
+
+- Expo File System — cache validation, file persistence, offline access
+- RN Fetch Blob Util — binary downloads, progress tracking for large files
+- NetInfo / AppState — network and app state monitoring, auto pause/resume
+- React Context API — global download API and queue coordination
+- Valtio — queue state and pause flags, ready for restore/resume
+
+RU
+
+### Общее описание сценариев
+
+- Сценарий 1: базовая очередь — все файлы добавляются в очередь, затем скачиваются по одному
+- Сценарий 2: фон/передний план — загрузки ставятся на паузу в фоне и возобновляются при возвращении
+- Сценарий 3: приоритетная загрузка — срочный файл скачивается вне очереди с временной паузой основной обработки
+
+EN
+
+### General scenario overview
+
+- Scenario 1: basic queue — all files are queued first, then downloaded sequentially
+- Scenario 2: background/foreground — downloads pause in background and resume on return
+- Scenario 3: priority download — urgent file downloads outside the queue with a temporary pause of the main flow
 
 ---
 
 ## 2. Обзор компонентов
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  useDownloadMessageAttachments (Хук)                         │
-│  ├─ Инициирует загрузки при восстановлении сети             │
-│  ├─ Подписывается на изменения appState и networkStatus     │
-│  └─ Заполняет очередь новыми файлами                        │
-└──────────────────┬──────────────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────────────┐
-│  DownloadMessageAttachmentsContext (Контекст + Провайдер)    │
-│  ├─ Управляет очередью команд                               │
-│  ├─ Координирует операции приостановки/возобновления        │
-│  └─ Предоставляет методы загрузки файлов                    │
-└──────────────────┬──────────────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────────────┐
-│  useManageProcessingQueue (Внутренний хук)                   │
-│  ├─ Управляет очередью команд на основе ref                 │
-│  ├─ Отслеживает флаг shouldStop через Proxy                 │
-│  └─ Управляет состоянием isProcessing                       │
-└─────────────────────────────────────────────────────────────┘
-```
+RU
+
+**useDownloadMessageAttachments**
+
+- Собирает условия запуска (auth, сеть, app state)
+- Готовит очередь: фильтрует кэш и добавляет команды
+- Запускает обработку через `runProcessing()`
+
+**DownloadMessageAttachmentsContext**
+
+- Единая точка входа для загрузок и приоритетных скачиваний
+- Координирует паузы/возобновления и отмену текущего файла
+- Инкапсулирует RNFetchBlob-загрузки и обработку ошибок
+
+**Valtio download queue**
+
+- Хранит очередь, статус и флаги паузы (`pausedDueTo*`)
+- Даёт вычислимые статусы (`queued/processing/paused/idle`)
+- Сохраняет состояние через MMKV
+
+**Progress + Auth (Zustand)**
+
+- Хранит прогресс текущего файла и общую позицию в очереди
+- Предоставляет данные авторизации для загрузки
+- Синхронизируется с процессом загрузки без дублирования логики
+
+EN
+
+**useDownloadMessageAttachments**
+
+- Centralizes start conditions (auth, network, app state)
+- Builds the queue: cache filter + command enqueue
+- Starts processing via `runProcessing()`
+
+**DownloadMessageAttachmentsContext**
+
+- Single entry point for normal and priority downloads
+- Coordinates pause/resume and current download cancellation
+- Encapsulates RNFetchBlob downloads and error handling
+
+**Valtio download queue**
+
+- Stores queue, status, and pause flags (`pausedDueTo*`)
+- Exposes computed states (`queued/processing/paused/idle`)
+- Persists state via MMKV
+
+**Progress + Auth (Zustand)**
+
+- Tracks per-file progress and overall position
+- Supplies auth state for download access
+- Syncs with download flow without duplicating logic
+
+EN
+
+### Slide: File loading steps (inside context)
+
+- Check auth token and prepare the local file path
+- Start RNFetchBlob download with progress and cache write
+- On success return the file path, on error cleanup cache and stop the step
 
 ---
 
-## 3. Пошаговая логика ключевых функций
+RU
 
-### 3.1 Инициализация очереди: `useManageProcessingQueue`
+### Слайд: Методы управления очередью
 
-**Назначение**: Создание изолированного управления очередью с реактивным состоянием.
+- `addCommand`, `removeCommand`, `resetQueue` — управление составом очереди
+- `startProcessing`, `completeCurrentCommand`, `completeProcessing` — запуск и завершение обработки
+- `pauseProcessing`, `pauseDueToBackground`, `pauseDueToMessageDownload`, `pauseDueToAuth`, `resumeProcessing`, `resumeFromBackground`, `clearPauseDueToMessageDownload` — пауза и возобновление
 
-```typescript
-// Использует Proxy для отслеживания флага остановки
-let { current: shouldStopProxy } = useRef(
-  new Proxy(
-    { shouldStop: false },
-    {
-      get: (target, prop) => Reflect.get(target, prop),
-      set: (target, prop, value) => Reflect.set(target, prop, value)
-    }
-  )
-);
+EN
 
-// Возвращает методы управления
-return {
-  queueRef,           // useRef<DownloadCommand[]>
-  shouldStopProxy,    // Для безопасной приостановки
-  addCommand,         // Добавить файл в начало очереди (приоритет)
-  pauseProcessing,    // Остановить обработку
-  setIsProcessing     // Обновить состояние UI
-};
-```
+### Slide: Queue control methods
 
-**Поток данных**:
-
-```
-addCommand → queueRef.current.unshift(command)
-                     ↓
-         queueRef = [file1, file2, file3...]
-```
+- `addCommand`, `removeCommand`, `resetQueue` — queue composition
+- `startProcessing`, `completeCurrentCommand`, `completeProcessing` — start and finish processing
+- `pauseProcessing`, `pauseDueToBackground`, `pauseDueToMessageDownload`, `pauseDueToAuth`, `resumeProcessing`, `resumeFromBackground`, `clearPauseDueToMessageDownload` — pause and resume
 
 ---
 
-### 3.2 Загрузка одного файла: `downloadFile`
+RU
 
-**Назначение**: Загрузка одного файла через API с проверкой кэша и обработкой ошибок.
+### Шаги `processQueue`
 
-```typescript
-const downloadFile = async ({ url, filename, id }: DownloadCommand) => {
-  // ШАГ 1: Получить токен авторизации из защищённого хранилища
-  const accessToken = await getAuthToken();
+- Проверить наличие токена и остановиться, если авторизация отсутствует
+- Установить статус обработки и зафиксировать общее количество файлов
+- В цикле: если очередь на паузе — остановиться; иначе выбрать следующий файл и обновить прогресс (какой файл сейчас и сколько осталось)
+- Запустить загрузку файла и остановиться при ошибке
+- Отметить файл завершенным, проверить паузу после завершения
+- Завершить обработку и сбросить прогресс
 
-  // ШАГ 2: Убедиться, что директория существует
-  await makeDirectory(ATTACHMENTS_DIR);
+EN
 
-  // ШАГ 3: Построить путь с расширением файла
-  const path = `${ATTACHMENTS_DIR}${id}.${getExtension(filename)}`;
+### `processQueue` steps
 
-  // ШАГ 4: Проверить кэш (файл уже загружен?)
-  const fileInfo = await FileSystem.getInfoAsync(path);
-  if (fileInfo.exists) {
-    console.log(`[File Processing] ${filename}, файл уже существует`);
-    return true; // ✓ Файл существует, пропускаем
-  }
-
-  // ШАГ 5: POST-запрос к API для загрузки
-  const response = await RNFetchBlob.fetch(
-    "POST",
-    `${axiosConfig.baseURL}${getDashboardSrvPaths().messages.downloadFile}`,
-    {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "text/plain"
-    },
-    url // Отправляем URL файла в теле запроса
-  );
-
-  // ШАГ 6: Проверить статус ошибки
-  if (response.respInfo.status >= 400) {
-    const message = JSON.parse(response.data).data;
-    throw new Error(`Ошибка загрузки файла: ${response.respInfo.status}`);
-  }
-
-  // ШАГ 7: Сохранить в формате Base64 в локальную ФС
-  const base64 = await response.base64();
-  await FileSystem.writeAsStringAsync(path, base64, {
-    encoding: FileSystem.EncodingType.Base64
-  });
-
-  return response.respInfo.status < 400;
-};
-```
-
-**Примеры использования**:
-
-```typescript
-// Успешная загрузка нового файла
-await downloadFile({
-  filename: "invoice.pdf",
-  url: "https://api.example.com/file/123",
-  id: "attachment-456"
-});
-// Результат: /Documents/files/attachment-456.pdf создан
-
-// Повторная загрузка (попадание в кэш)
-await downloadFile({ ... });
-// Результат: возвращает true без повторной загрузки (файл существует)
-```
+- Check auth token and stop if not authenticated
+- Set processing status and capture total file count
+- Loop: if paused, stop; otherwise pick the next file and update progress (current file and how many remain)
+- Download the file and stop on failure
+- Mark the file completed and re-check pause after completion
+- Complete processing and reset progress
 
 ---
 
-### 3.3 Обработка очереди: `processQueue`
+RU
 
-**Назначение**: Последовательная загрузка всех файлов из очереди с возможностью остановки.
+### Шаги `downloadFileFromMessage` (приоритетная загрузка)
 
-```typescript
-const processQueue = async () => {
-  setIsProcessing(true); // UI: показать "обработка активна"
+- Проверить кэш и открыть файл сразу, если он уже сохранен
+- Поставить очередь на паузу и отменить текущую загрузку
+- Скачать выбранный файл по приоритету
+- Удалить его из очереди, если он там был
+- Снять паузу и возобновить очередь при соблюдении условий
 
-  // ШАГ 1: Цикл пока в очереди есть элементы
-  while (queueRef.current.length) {
-    console.log(
-      "[File Processing] Обработка очереди, осталось",
-      queueRef.current.length
-    );
+EN
 
-    // ШАГ 2: Загрузить первый файл из очереди
-    const result = await downloadFile(queueRef.current[0]);
+### `downloadFileFromMessage` steps (priority download)
 
-    // ШАГ 3: Если загрузка не удалась - выход из цикла
-    if (!result) {
-      break; // ✗ Ошибка, остановить обработку
-    }
-
-    // ШАГ 4: Удалить загруженный файл из очереди
-    queueRef.current.shift(); // Удалить из начала
-
-    // ШАГ 5: Проверить флаг паузы (установлен ли shouldStop?)
-    if (shouldStopProxy.shouldStop) {
-      console.log("[File Processing] Остановка обработки");
-      shouldStopProxy.shouldStop = false;
-      break; // Обработка приостановлена извне
-    }
-  }
-
-  setIsProcessing(false); // UI: скрыть "обработка активна"
-};
-```
-
-**Временная шкала**:
-
-```
-Время   Событие                  queueRef           isProcessing
-────────────────────────────────────────────────────────────────
-t=0    processQueue запущен     [A, B, C]          true
-t=1    A загружен               [B, C]             true
-t=2    B загружен               [C]                true
-t=3    pauseProcessing()        [C]                false
-t=4    resumeProcessing()       [C]                true
-t=5    C загружен               []                 true
-t=6    цикл завершён            []                 false
-```
+- Check cache and open the file immediately if it already exists
+- Pause the queue and cancel the current download
+- Download the selected file with priority
+- Remove it from the queue if it was queued
+- Clear the pause and resume the queue when conditions allow
 
 ---
 
-### 3.4 Приостановка: `pauseProcessing` и `resumeProcessing`
+RU
 
-**Назначение**: Прерывание текущей обработки для приоритетных файлов.
+### Шаги `downloadFile`
 
-```typescript
-// ПАУЗА: Остановить очередь
-const pauseProcessing = async () => {
-  shouldStopProxy.shouldStop = true; // Флаг для цикла processQueue
-  setIsProcessing(false); // UI: скрыть "обработка активна"
-  await Promise.resolve(); // Позволить React обновиться
-};
+- Проверить токен и остановиться, если нет доступа
+- Подготовить путь файла и директорию кэша
+- Запустить RNFetchBlob-загрузку с прогрессом
+- При успехе вернуть путь файла
+- При ошибке очистить кэш и завершить шаг
 
-// ВОЗОБНОВЛЕНИЕ: Продолжить с того же места
-const resumeProcessing = async () => {
-  setIsProcessing(true);
-  console.log("[File Processing] Запущена новая очередь обработки");
-  await processQueue(); // Обработать оставшиеся файлы
-};
-```
+EN
 
-**Сценарий использования** (срочная загрузка вложения):
+### `downloadFile` steps
 
-```typescript
-// Фоновая обработка очереди: [file1, file2, file3]
-// Пользователь нажал "Загрузить сейчас" на файле в чате
-
-const downloadFileFromMessage = async (attachment: Attachment) => {
-  await pauseProcessing(); // ⏸ Остановить фоновую загрузку
-  // queueRef = [file1, file2, file3], isProcessing = false
-
-  const result = await downloadFile({
-    // ↓ Загрузить срочный файл
-    filename: attachment.name,
-    url: attachment.url,
-    id: attachment.id
-  });
-
-  resumeProcessing(); // ▶ Возобновить фоновую загрузку
-  // Обработка [file1, file2, file3] возобновлена
-};
-```
-
----
-
-### 3.5 Инициация загрузки: `useDownloadMessageAttachments`
-
-**Назначение**: Хук для автоматического запуска очереди при восстановлении сети.
-
-```typescript
-// ШАГ 1: Подготовить вложения для очереди
-const addFilesToProcessingQueue = useCallback(
-  async (attachments: (Attachment | undefined)[]) => {
-    resetQueue(); // Очистить старую очередь
-
-    for (const attachment of attachments) {
-      const filename = `${attachment?.id}.${getExtension(attachment?.name)}`;
-      const path = `${ATTACHMENTS_DIR}${filename}`;
-
-      // Проверить локальный кэш
-      const fileInfo = await FileSystem.getInfoAsync(path);
-
-      if (!attachment?.url || fileInfo.exists) continue; // ✓ Уже есть
-
-      // ШАГ 2: Добавить в очередь для фоновой обработки
-      addCommand({
-        url: attachment.url,
-        filename: attachment.name,
-        id: attachment.id
-      });
-    }
-  },
-  [addCommand, resetQueue]
-);
-
-// ШАГ 3: Отслеживать восстановление сети и состояние приложения
-useEffect(() => {
-  if (!attachments.length) return;
-
-  // Начать загрузку ТОЛЬКО если:
-  // 1. Приложение активно (на переднем плане)
-  // 2. Интернет доступен (isConnected = true)
-  if (isAppStateActive(appState) && isConnected) {
-    addFilesToProcessingQueue(attachments);
-    startProcessing(); // Начать обработку очереди
-  }
-}, [attachments.length, appState, isConnected]);
-```
-
-**Реальный сценарий**:
-
-```
-1. Приложение запущено, нет интернета
-   → useDownloadMessageAttachments: ничего не делает
-
-2. Пользователь включает Wi-Fi
-   → isConnected меняется на true
-   → isAppStateActive(appState) = true
-   → useEffect срабатывает
-   → addFilesToProcessingQueue добавляет все вложения в queueRef
-   → startProcessing() начинает загрузку файлов в фоне
-
-3. Пользователь закрыл приложение
-   → appState = 'background'
-   → pauseProcessing() вызывается автоматически (если реализовано)
-   → queueRef остаётся нетронутым для последующего возобновления
-```
-
----
-
-## 4. Интеграция в приложение
-
-**Обёртка провайдером**:
-
-```typescript
-// app/_layout.tsx
-export default function RootLayout() {
-  return (
-    <DownloadMessageAttachmentsProvider>
-      <Stack>
-        {/* Все экраны имеют доступ к контексту */}
-      </Stack>
-    </DownloadMessageAttachmentsProvider>
-  );
-}
-```
-
-**Использование в компоненте**:
-
-```typescript
-function MessageScreen() {
-  useDownloadMessageAttachments(); // Хук автоматически запустит очередь
-  const { downloadFileFromMessage } = useDownloadMessageAttachmentsContext();
-
-  return (
-    <Button
-      onPress={() => downloadFileFromMessage(attachment)}
-      title="Загрузить сейчас"
-    />
-  );
-}
-```
-
----
-
-## 5. Ключевые характеристики
-
-| Характеристика          | Реализация                                              |
-| ----------------------- | ------------------------------------------------------- |
-| **Кэширование**         | Проверка через `FileSystem.getInfoAsync()` перед загрузкой |
-| **Приоритизация**       | `unshift()` добавляет новые файлы в начало очереди      |
-| **Безопасность**        | Токен из защищённого хранилища `authStorage`            |
-| **Обработка ошибок**    | Проверка `status >= 400`, выброс Error                  |
-| **Реактивность**        | Zustand `setIsProcessing` обновляет состояние UI        |
-| **Устойчивость к сети** | Хук отслеживает `isConnected` через `useCheckNetworkStatus` |
+- Check auth token and stop if access is missing
+- Prepare the file path and cache directory
+- Start the RNFetchBlob download with progress
+- On success return the file path
+- On error clean up cache and end the step

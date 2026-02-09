@@ -4,9 +4,10 @@
 This scenario describes the basic file loading process where files are downloaded sequentially through a managed queue system without any external interruptions or user interactions.
 
 ## Technical Implementation
-- **Queue Store**: `stores/downloadQueue/downloadQueueStore.ts`
+- **Queue Store (Valtio)**: `stores/downloadQueue/valtioState.ts`
 - **Progress Tracking**: `stores/downloadProgress/downloadProgressStore.ts`
-- **File Management**: `lib/files.ts` using Expo File System v17+
+- **File Management**: `lib/files.ts` using Expo File System v17+ and `react-native-blob-util`
+- **Download Context**: `contexts/downloadMessageAttachments.tsx`
 - **Download Hook**: `hooks/useDownloadMessageAttachments.tsx`
 
 ## User Flow
@@ -14,10 +15,10 @@ This scenario describes the basic file loading process where files are downloade
 ### Step 1: Queue Initialization
 1. User triggers file download action (e.g., downloads message attachments)
 2. System checks for existing cached files using `fileExistsInCache(filename)`
-3. Non-cached files are added to the download queue via `downloadQueueActions.addCommands()`
+3. Queue is reset for a clean batch, then non-cached files are added via `downloadQueueActions.addCommand()`
 
 ### Step 2: Sequential Processing
-1. Download queue begins processing files one by one
+1. After all files are queued, processing begins in a single batch
 2. Current queue state is displayed: "Downloading X of Y files"
 3. Each file shows individual progress percentage based on bytes received/total
 4. Files are downloaded to cache directory using authenticated API calls
@@ -50,6 +51,49 @@ Update UI → Show Progress → Update Progress → Mark Complete
 Continue → Process Next → Repeat Process → Queue Empty
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant Q as Queue
+    participant C as Cache
+    participant D as Downloader
+
+    U->>Q: Start downloads
+    activate Q
+
+    Q->>Q: Reset previous queue
+
+    loop Each Attachment
+        Q->>C: Check cache
+        C-->>Q: Response
+
+        alt Cached
+            Q-->>U: Skip file
+        else Not Cached
+            Q->>Q: addCommand()
+        end
+    end
+
+    Q->>Q: runProcessing()
+
+    loop Each Queued File
+        Q->>D: Download current file
+        activate D
+        D-->>Q: Result
+        deactivate D
+
+        alt Success
+            Q->>Q: Mark completed
+        else Failure
+            break Terminate batch on download error
+                Note over Q,D: Critical failure: Abandoning remaining queue
+            end
+        end
+    end
+    deactivate Q
+```
+
 ## Key Features
 
 ### Deduplication
@@ -61,13 +105,13 @@ Continue → Process Next → Repeat Process → Queue Empty
 - Queue maintains order and processes files in FIFO manner
 
 ### Persistence
-- Queue state persists across app restarts using MMKV storage
-- Incomplete downloads resume when app is reopened
+- Queue state (commands + completed IDs) persists via MMKV using Valtio `subscribe()`
+- Partial download progress is not persisted; files restart if reprocessed
 
 ### Error Handling
-- Network errors pause the queue with retry capabilities
+- Network errors stop the current file and end processing until re-triggered
 - Authentication errors halt processing until resolved
-- Individual file failures don't stop the entire queue
+- A failed file stops the processing loop for that batch
 
 ## Expected Behavior
 
@@ -83,16 +127,15 @@ Continue → Process Next → Repeat Process → Queue Empty
 - Progress reflects only actual downloads needed
 
 ### Network Conditions
-- Downloads pause when network is unavailable
-- Queue resumes when connection is restored
-- Progress is maintained during network interruptions
+- Downloads pause or stop when network is unavailable
+- Queue resumes when conditions are restored and processing is re-triggered
+- Progress for an interrupted file restarts from the beginning
 
 ## UI States
 
 ### Loading State
 - Progress bar showing current file progress (0-100%)
 - Text: "Downloading [filename] ([X] of [Y])"
-- Cancel option available
 
 ### Completion State
 - Success message: "All files downloaded"
@@ -114,7 +157,7 @@ Continue → Process Next → Repeat Process → Queue Empty
 ### Network Efficiency
 - Authenticated downloads with token injection
 - Progress callbacks for real-time feedback
-- Connection pooling through RNFetchBlob
+- Connection handling through `react-native-blob-util`
 
 ### Storage Management
 - Files stored in app cache directory

@@ -23,21 +23,22 @@ This documentation describes three key scenarios for file loading in the React N
 - Cache-first strategy for instant file opening
 - Queue pausing and priority download processing
 - Automatic queue resumption after completion
-- User-initiated priority handling
+- User-initiated priority handling with cancellation
 
 ## Technical Architecture
 
 ### Key Components
-- **Queue Management**: `stores/downloadQueue/downloadQueueStore.ts`
+- **Queue Management**: `stores/downloadQueue/valtioState.ts`
 - **Progress Tracking**: `stores/downloadProgress/downloadProgressStore.ts`
 - **App State Monitoring**: `hooks/useAppState.tsx`
 - **File Operations**: `lib/files.ts` (Expo File System v17+)
 - **Download Coordination**: `hooks/useDownloadMessageAttachments.tsx`
 
 ### Core Features
-- **Persistent Queue**: Zustand + MMKV for cross-session persistence
+- **Persistent Queue**: Valtio + MMKV via `subscribe` for cross-session persistence
 - **Smart Caching**: Filename-based deduplication and cache checking
-- **Priority System**: User-triggered immediate downloads bypass queue
+- **Priority System**: Immediate downloads with cancellation support
+- **Local State**: Active download task stored in a ref
 - **Background Handling**: Automatic pause/resume based on app state
 - **Authentication**: Bearer token injection for secure file access
 

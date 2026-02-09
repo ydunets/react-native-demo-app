@@ -5,9 +5,10 @@ This scenario describes file loading behavior when the app transitions between b
 
 ## Technical Implementation
 - **App State Monitoring**: `hooks/useAppState.tsx`
-- **Queue Management**: `hooks/useManageProcessingQueue.tsx`
+- **Queue State + Pause Flags**: `stores/downloadQueue/valtioState.ts`
+- **Processing Loop + Downloads**: `contexts/downloadMessageAttachments.tsx`
+- **Resume Trigger**: `hooks/useDownloadMessageAttachments.tsx`
 - **State Detection**: React Native's `AppState` API
-- **Download Context**: `contexts/downloadMessageAttachments.tsx`
 
 ## User Flow
 
@@ -20,8 +21,8 @@ This scenario describes file loading behavior when the app transitions between b
 1. User switches to another app or locks device
 2. App state changes to 'background' or 'inactive'
 3. System detects state change via `useAppState()` hook
-4. Download processing is automatically paused
-5. Current download is interrupted and connection closed
+4. Queue is paused via `pauseDueToBackground()`
+5. Current download is not resumed; new files are not started
 
 ### Step 3: Background State Handling
 1. Downloads remain paused while app is in background
@@ -32,14 +33,14 @@ This scenario describes file loading behavior when the app transitions between b
 ### Step 4: Return to Foreground
 1. User returns to the app
 2. App state changes to 'active'
-3. System detects foreground state automatically
-4. Download queue processing resumes immediately
-5. Downloads continue from where they left off
+3. `useDownloadMessageAttachments` checks `canResumeFromBackground`
+4. `resumeFromBackground()` clears the background pause flag
+5. Queue processing restarts via `runProcessing()` if items remain
 
 ### Step 5: Progress Restoration
-1. Queue state is restored from persistent storage
+1. Queue state is restored from MMKV (Valtio `subscribe()` persistence)
 2. Completed files remain marked as finished
-3. Current file download restarts from beginning
+3. If a file was mid-download, it restarts from the beginning
 4. Progress tracking resumes with updated UI
 
 ## Technical Flow
@@ -56,6 +57,33 @@ User Returns → AppState.active → Resume Processing → Restore State
 App Active → Detect Change → Start Downloads → Update UI
 ```
 
+```mermaid
+sequenceDiagram
+       autonumber
+       participant A as AppState
+       participant Q as Queue
+       participant P as Processor
+
+       A-->>Q: active
+       activate Q
+       Q->>Q: Queue ready (all files added)
+       Q->>P: Process next file
+       A-->>Q: background
+       Q->>Q: pauseDueToBackground()
+       Q->>Q: Persist state (MMKV)
+       A-->>Q: active
+       Q->>Q: canResumeFromBackground?
+
+       alt Can resume
+              Q->>Q: resumeFromBackground()
+              Q->>P: runProcessing()
+       else Cannot resume
+              Q-->>Q: Wait for resume conditions (auth/network/user action)
+       end
+       deactivate Q
+```
+```
+
 ## Key Features
 
 ### Automatic State Detection
@@ -64,14 +92,14 @@ App Active → Detect Change → Start Downloads → Update UI
 - No user intervention required
 
 ### Queue Preservation
-- Complete queue state persists during background mode
-- File download progress tracking maintained
+- Queue state persists via Valtio + MMKV
+- Pause reason is tracked in `pausedDueToBackground`
 - Queue order and priorities preserved
 
 ### Seamless Resumption
-- Downloads resume automatically when app returns to foreground
+- Downloads resume when app is active and processing is re-triggered
+- Resume happens via `resumeFromBackground()` + `runProcessing()`
 - No manual restart required
-- Progress continues from last known state
 
 ### Resource Management
 - Downloads pause to conserve battery and data
@@ -135,9 +163,9 @@ App Active → Detect Change → Start Downloads → Update UI
 ## Edge Cases
 
 ### Rapid State Changes
-- Multiple quick background/foreground transitions handled gracefully
-- State detection debouncing prevents unnecessary pauses
-- Queue stability maintained during rapid changes
+- Multiple quick background/foreground transitions are handled sequentially
+- No explicit debouncing is implemented
+- Queue stability maintained during state transitions
 
 ### Long Background Periods
 - Queue state preserved for extended periods
@@ -145,9 +173,9 @@ App Active → Detect Change → Start Downloads → Update UI
 - Proper restoration regardless of background duration
 
 ### Network Changes During Background
-- Network state changes handled properly during background
-- Connection restoration when returning to foreground
-- Error handling for network unavailability
+- Network state is re-checked when the app becomes active
+- Connection restoration is required before processing restarts
+- Errors stop the current file and require a re-trigger
 
 ## Implementation Details
 
@@ -163,7 +191,7 @@ if (!isAppActive) {
 ```
 
 ### Queue State Persistence
-- Zustand store with MMKV persistence
+- Valtio store with MMKV persistence via `subscribe()`
 - Automatic state saving during background transitions
 - State restoration on foreground return
 
