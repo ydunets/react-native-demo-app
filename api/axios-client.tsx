@@ -53,6 +53,7 @@ const createAxiosClient = (): AxiosInstance => {
         logout();
 
         console.warn('Unauthorized: User logged out due to expired token');
+        return
 
         // You can emit an event or use a ref to navigate from here
         // or the guard in app/(main)/_layout.tsx will catch this and redirect
