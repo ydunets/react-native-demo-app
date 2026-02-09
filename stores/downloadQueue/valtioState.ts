@@ -249,13 +249,6 @@ export const downloadQueueActions = {
   },
 
   /**
-   * Mark a specific ID as completed (without removing from queue)
-   */
-  markCompleted(id: string) {
-    downloadQueueState.completedIds.add(id);
-  },
-
-  /**
    * Complete processing (queue empty or stopped)
    */
   completeProcessing() {
@@ -276,27 +269,6 @@ export const downloadQueueActions = {
     downloadQueueState.shouldStop = false;
     downloadQueueState.totalCount = 0;
     // Clear persisted state to ensure clean slate on next login
-    downloadQueueMMKV.remove(QUEUE_MMKV_KEY);
-  },
-
-  /**
-   * Check if a specific ID is completed
-   */
-  isCompleted(id: string): boolean {
-    return downloadQueueState.completedIds.has(id);
-  },
-
-  /**
-   * Get completed IDs Set reference
-   */
-  getCompletedIds(): Set<string> {
-    return downloadQueueState.completedIds;
-  },
-
-  /**
-   * Clear persisted storage
-   */
-  clearPersistedState() {
     downloadQueueMMKV.remove(QUEUE_MMKV_KEY);
   },
 };

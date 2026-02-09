@@ -3,12 +3,7 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/nativewindui/Text';
-
-const PILLARS = [
-  { id: '1', name: 'Mental Health', description: 'Mental health services and support' },
-  { id: '2', name: 'Physical Health', description: 'Physical wellness programs' },
-  { id: '3', name: 'Nutrition', description: 'Nutritional guidance and meal plans' },
-];
+import { PILLARS } from '@/constants/services/services';
 
 export default function PillarsListScreen() {
   return (

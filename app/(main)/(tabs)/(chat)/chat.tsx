@@ -6,53 +6,9 @@ import { useMemo } from 'react';
 import { Text } from '@/components/nativewindui/Text';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { Icon } from '@/components/nativewindui/Icon';
-
-type Chat = {
-  id: string;
-  name: string;
-  lastMessage: string;
-  lastMessageTime: Date;
-  unread: number;
-  avatar?: string;
-};
-
-const CHATS: Chat[] = [
-  {
-    id: '1',
-    name: 'Support Team',
-    lastMessage: 'Hello! How can I help you today?',
-    lastMessageTime: new Date('2024-01-15T10:06:00'),
-    unread: 2,
-  },
-  {
-    id: '2',
-    name: 'Dr. Smith',
-    lastMessage: 'Your appointment is confirmed for next Monday at 2 PM',
-    lastMessageTime: new Date('2024-01-15T09:15:00'),
-    unread: 0,
-  },
-  {
-    id: '3',
-    name: 'Wellness Coach',
-    lastMessage: 'Great progress this week! Keep up the good work.',
-    lastMessageTime: new Date('2024-01-14T14:30:00'),
-    unread: 1,
-  },
-  {
-    id: '4',
-    name: 'Nurse Johnson',
-    lastMessage: 'Please remember to take your medication',
-    lastMessageTime: new Date('2024-01-13T08:00:00'),
-    unread: 0,
-  },
-  {
-    id: '5',
-    name: 'Therapy Group',
-    lastMessage: 'The next session will be on Friday',
-    lastMessageTime: new Date('2024-01-12T16:45:00'),
-    unread: 3,
-  },
-];
+import { CHATS, type Chat } from '@/constants/chat/chats';
+import { formatChatTime } from '@/utils/chat/date';
+import RoutePaths from '@/router-map/routes';
 
 type ChatItemProps = {
   chat: Chat;
@@ -61,26 +17,7 @@ type ChatItemProps = {
 
 function ChatItem({ chat, onPress }: ChatItemProps) {
   const formattedTime = useMemo(() => {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - chat.lastMessageTime.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return chat.lastMessageTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return chat.lastMessageTime.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return chat.lastMessageTime.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-    }
+    return formatChatTime(chat.lastMessageTime);
   }, [chat.lastMessageTime]);
 
   return (
@@ -127,7 +64,7 @@ function ChatList() {
 
   const handlePressChat = (id: string) => {
     // Dynamic navigation to chat detail without index files
-    router.push(`/(main)/(tabs)/(chat)/${id}`);
+    router.push(RoutePaths.ChatDetailScreen.replace('[id]', id));
   };
 
   const renderItem = ({ item }: { item: Chat }) => (
@@ -160,7 +97,7 @@ export default function ChatScreen() {
 
   const handleNewChat = () => {
     // Navigate to new chat or open chat creation modal
-    router.push('/(main)/(tabs)/(chat)/new');
+    router.push(RoutePaths.ChatNewScreen);
   };
 
   return (

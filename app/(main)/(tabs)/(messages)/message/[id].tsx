@@ -12,53 +12,13 @@ import {
   getCacheFilePath,
   fileExistsInCache,
 } from '@/lib/files';
+import {
+  formatFileSize,
+  getFileExtension,
+  getIconNameFromExtension,
+} from '@/utils/messages/attachment';
 import type { Attachment, MessageWithAttachments } from '@/hooks/useMessageAttachments';
 import { useDownloadMessageAttachmentsContext } from '@/contexts/downloadMessageAttachments';
-
-const BYTES_PER_KB = 1024;
-const BYTES_PER_MB = BYTES_PER_KB * 1024;
-
-/**
- * Format file size in human-readable format
- */
-const formatFileSize = (bytes: number): string => {
-  if (bytes < BYTES_PER_KB) return `${bytes} B`;
-  if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} KB`;
-  return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
-};
-
-/**
- * Get file extension from filename
- */
-const getFileExtension = (filename: string): string => {
-  const parts = filename.split('.');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
-};
-
-/**
- * Get icon name based on file extension
- */
-const getIconNameFromExtension = (extension: string): string => {
-  switch (extension) {
-    case 'pdf':
-      return 'doc.fill';
-    case 'docx':
-    case 'doc':
-      return 'doc.fill';
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'gif':
-    case 'webp':
-      return 'photo.fill';
-    case 'mp4':
-    case 'mov':
-    case 'avi':
-      return 'play.circle.fill';
-    default:
-      return 'doc.fill';
-  }
-};
 
 function MessageHeader({ message, onBack }: { message: MessageWithAttachments; onBack: () => void }) {
   const formattedDate = useMemo(() => {

@@ -9,38 +9,17 @@ import { Text } from '@/components/nativewindui/Text';
 import { Icon } from '@/components/nativewindui/Icon';
 import { Avatar, AvatarFallback } from '@/components/nativewindui/Avatar';
 import { useMessages } from '@/hooks/useMessages';
-import type { Message } from '@/types/message';
-
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+import { formatMessageDate } from '@/utils/messages/date';
+import { MessageWithAttachments } from '@/hooks/useMessageAttachments';
 
 type MessageItemProps = {
-  message: Message;
-  onPress: (message: Message) => void;
+  message: MessageWithAttachments;
+  onPress: (message: MessageWithAttachments) => void;
 };
 
 function MessageItem({ message, onPress }: MessageItemProps) {
   const formattedDate = useMemo(() => {
-    const sentDate = new Date(message.sentAt);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - sentDate.getTime());
-    const diffDays = Math.floor(diffTime / MS_PER_DAY);
-
-    if (diffDays === 0) {
-      return sentDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return sentDate.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return sentDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-    }
+    return formatMessageDate(message.sentAt);
   }, [message.sentAt]);
 
   const handlePress = useCallback(() => onPress(message), [message, onPress]);
@@ -96,7 +75,7 @@ function MessageList() {
   const { messages, isLoading, error } = useMessages();
 
   const handlePressMessage = useCallback(
-    (message: Message) => {
+    (message: MessageWithAttachments) => {
       router.push({
         pathname: '/(main)/(tabs)/(messages)/message/[id]',
         params: { id: message.id, messageData: JSON.stringify(message) },
@@ -106,11 +85,11 @@ function MessageList() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => <MessageItem message={item} onPress={handlePressMessage} />,
+    ({ item }: { item: MessageWithAttachments }) => <MessageItem message={item} onPress={handlePressMessage} />,
     [handlePressMessage]
   );
 
-  const keyExtractor = useCallback((item: Message) => item.id, []);
+  const keyExtractor = useCallback((item: MessageWithAttachments) => item.id, []);
 
   if (isLoading) {
     return (
