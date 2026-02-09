@@ -193,6 +193,13 @@ export const downloadQueueActions = {
   },
 
   /**
+   * Clear pause caused by message download
+   */
+  clearPauseDueToMessageDownload() {
+    downloadQueueState.pausedDueToMessageDownload = false;
+  },
+
+  /**
    * Pause due to authentication issues
    */
   pauseDueToAuth() {

@@ -16,7 +16,7 @@
  */
 
 import { Directory, File } from 'expo-file-system';
-import { ATTACHMENTS_CACHE_DIR, MAX_FILE_SIZE } from '@/constants/File';
+import { ATTACHMENTS_CACHE_DIR } from '@/constants/File';
 
 export const getCachedFilenames = (): Set<string> => {
   try {
@@ -156,7 +156,7 @@ export const getCachedFileSize = (
     const file = new File(path);
 
     if (file.exists && file.size) {
-      console.log("[Cached File Info] File Size, Bytes: ", file.size, "File Name: ", file.name, "");
+      // console.log("[Cached File Info] File Size, Bytes: ", file.size, "File Name: ", file.name, "");
       
       return file.size;
     }

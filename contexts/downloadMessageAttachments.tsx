@@ -227,34 +227,44 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       console.log('\x1b[31m', '[File Processing] Current download cancelled for priority file', '\x1b[0m');
     });
 
-    const filePath = await downloadFile({
-      filename,
-    });
+    let filePath: string | undefined;
 
-    if (!filePath) {
-      console.warn(
-        '\x1b[33m',
-        '[File Processing] Attachment download failed, keeping queued item',
-        '\x1b[0m'
-      );
-      return undefined;
+    try {
+      filePath = await downloadFile({
+        filename,
+      });
+
+      if (!filePath) {
+        console.warn(
+          '\x1b[33m',
+          '[File Processing] Attachment download failed, keeping queued item',
+          '\x1b[0m'
+        );
+        return undefined;
+      }
+
+      // Remove this file from queue if it was queued
+      removeCommand(attachment.id);
+
+      console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
+      return filePath;
+    } finally {
+      downloadQueueActions.clearPauseDueToMessageDownload();
+
+      // Resume queue processing (will restart from where it left off)
+      // Only resume if authenticated, has items, and not paused for other reasons
+      const { tokens } = useAuthStore.getState();
+      if (
+        downloadQueueState.hasQueuedItems &&
+        tokens?.accessToken &&
+        !downloadQueueState.pausedDueToBackground &&
+        !downloadQueueState.pausedDueToAuth
+      ) {
+        resumeProcessing();
+        // Re-trigger queue processing
+        processQueue();
+      }
     }
-
-    // Remove this file from queue if it was queued
-    removeCommand(attachment.id);
-
-    console.log('\x1b[36m', '[File Processing] Download File from attachment finished', '\x1b[0m');
-
-    // Resume queue processing (will restart from where it left off)
-    // Only resume if authenticated and has items
-    const { tokens } = useAuthStore.getState();
-    if (downloadQueueState.hasQueuedItems && tokens?.accessToken) {
-      resumeProcessing();
-      // Re-trigger queue processing
-      processQueue();
-    }
-    
-    return filePath;
   };
 
   const runProcessing = async () => {

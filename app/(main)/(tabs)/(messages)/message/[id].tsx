@@ -109,12 +109,13 @@ function MessageHeader({ message, onBack }: { message: MessageWithAttachments; o
 type AttachmentItemProps = {
   attachment: Attachment;
   onPress: (attachment: Attachment) => void;
+  isDownloading: boolean;
+  cachedSizes: Map<string, number>;
 };
 
-function AttachmentItem({ attachment, onPress }: AttachmentItemProps) {
-  const [isDownloading] = useState(false);
-  const isInMobileCache = getCachedFilenames().has(attachment.name);
-  const isCache = isInMobileCache && attachment.fileSizeBytes === getCachedFileSize(getCacheFilePath(attachment.filename));
+function AttachmentItem({ attachment, onPress, isDownloading, cachedSizes }: AttachmentItemProps) {
+  const cachedSize = cachedSizes.get(attachment.filename);
+  const isCache = cachedSize !== undefined && attachment.fileSizeBytes === cachedSize;
 
   const extension = useMemo(() => getFileExtension(attachment.name), [attachment.name]);
   const iconName = useMemo(() => getIconNameFromExtension(extension), [extension]);
@@ -155,9 +156,11 @@ type AttachmentListProps = {
   attachments: Attachment[] | undefined;
   messageId: string;
   onAttachmentPress: (attachment: Attachment) => void;
+  downloadingId: string | null;
+  cachedSizes: Map<string, number>;
 };
 
-function AttachmentList({ attachments, onAttachmentPress }: AttachmentListProps) {
+function AttachmentList({ attachments, onAttachmentPress, downloadingId, cachedSizes }: AttachmentListProps) {
   if (!attachments || attachments.length === 0) {
     return null;
   }
@@ -170,6 +173,8 @@ function AttachmentList({ attachments, onAttachmentPress }: AttachmentListProps)
             key={attachment.id}
             attachment={attachment}
             onPress={onAttachmentPress}
+            isDownloading={downloadingId === attachment.id}
+            cachedSizes={cachedSizes}
           />
         ))}
       </View>
@@ -182,9 +187,11 @@ const MemoizedAttachmentList = memo(AttachmentList);
 type MessageBodyProps = {
   message: MessageWithAttachments;
   onAttachmentPress: (attachment: Attachment) => void;
+  downloadingId: string | null;
+  cachedSizes: Map<string, number>;
 };
 
-function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
+function MessageBody({ message, onAttachmentPress, downloadingId, cachedSizes }: MessageBodyProps) {
   return (
     <View className="mt-4">
       <Text variant="title1" className="mb-4">
@@ -197,6 +204,8 @@ function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
         attachments={message.attachments}
         messageId={message.id}
         onAttachmentPress={onAttachmentPress}
+        downloadingId={downloadingId}
+        cachedSizes={cachedSizes}
       />
     </View>
   );
@@ -205,6 +214,7 @@ function MessageBody({ message, onAttachmentPress }: MessageBodyProps) {
 export default function MessageScreen() {
   const { downloadFileFromMessage } = useDownloadMessageAttachmentsContext();
   const params = useLocalSearchParams<{ id: string; messageData?: string }>();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -233,6 +243,17 @@ export default function MessageScreen() {
     router.back();
   }, [router]);
 
+  const cachedSizes = useMemo(() => {
+    const filenames = getCachedFilenames();
+    const sizes = new Map<string, number>();
+
+    filenames.forEach((name) => {
+      sizes.set(name, getCachedFileSize(getCacheFilePath(name)));
+    });
+
+    return sizes;
+  }, [downloadingId, message?.id]);
+
   const openPdfViewer = useCallback(
     (fileName: string) => {
       router.push({
@@ -250,23 +271,29 @@ export default function MessageScreen() {
       // Check if already cached - findCachedFilePath returns actual path or null
       const existsInCache = fileExistsInCache(filename)
 
-      if( existsInCache ) {
+      if (existsInCache) {
         openPdfViewer(filename);
         return;
       }
 
-      const result = await downloadFileFromMessage(attachment);
+      setDownloadingId(attachment.id);
 
-      if( !result ) {
-        console.warn('[MessageScreen] Attachment download failed');
-        return;
+      try {
+        const result = await downloadFileFromMessage(attachment);
+
+        if (!result) {
+          console.warn('[MessageScreen] Attachment download failed');
+          return;
+        }
+
+        if (getFileExtension(filename) !== 'pdf') {
+          return;
+        }
+
+        openPdfViewer(filename);
+      } finally {
+        setDownloadingId(null);
       }
-
-      if (getFileExtension(filename) !== 'pdf') {
-        return;
-      }
-
-      openPdfViewer(filename);
     },
     [openPdfViewer, downloadFileFromMessage]
   );
@@ -298,7 +325,12 @@ export default function MessageScreen() {
         <ScrollView className="flex-1">
           <View className="p-4">
             <MessageHeader message={message} onBack={handlePressBack} />
-            <MessageBody message={message} onAttachmentPress={handleAttachmentPress} />
+            <MessageBody
+              message={message}
+              onAttachmentPress={handleAttachmentPress}
+              downloadingId={downloadingId}
+              cachedSizes={cachedSizes}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

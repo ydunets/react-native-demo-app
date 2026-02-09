@@ -8,7 +8,6 @@ export {
 
 // Valtio hooks
 export {
-  useQueueSnapshot,
   useQueue,
   useIsProcessing,
   useQueueCount,
@@ -26,7 +25,6 @@ export {
   useQueueActions,
   useQueueStateRef,
   useQueueProgress,
-  useQueueManager,
   useIsCompleted,
 } from './valtioHooks';
 

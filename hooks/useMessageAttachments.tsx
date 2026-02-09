@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { axiosClient } from '@/api/axios-client';
-import { useIsLoggedIn } from '@/stores/auth';
+import { useIsLoggedIn, useIsHydrated } from '@/stores/auth';
 
 const DEFAULT_LIMIT = 10;
 
@@ -71,12 +71,14 @@ export const MESSAGE_ATTACHMENTS_KEY = ['message-attachments'];
 
 export const useMessageAttachments = () => {
   const isLoggedIn = useIsLoggedIn();
+  const isHydrated = useIsHydrated();
+  const shouldFetch = isHydrated && isLoggedIn;
 
   const query = useQuery<Attachment[], Error>({
     queryKey: MESSAGE_ATTACHMENTS_KEY,
     queryFn: () => fetchAndFilterAttachments(),
     staleTime: STALE_TIME,
-    enabled: isLoggedIn,
+    enabled: shouldFetch,
   });
 
   return {
