@@ -74,7 +74,7 @@ const PREVIEWS = [
   "Here's the latest status update on your request.",
 ] as const;
 
-const DEFAULT_MESSAGE_LIMIT = 50;
+const DEFAULT_MESSAGE_LIMIT = 8;
 const BASE_DATE = new Date('2024-01-15');
 const HOURS_IN_DAY = 24;
 const MINUTES_IN_HOUR = 60;
@@ -90,26 +90,23 @@ const generateMessageDate = (index: number): Date => {
   return date;
 };
 
-/**
- * Generate display data for a message based on its index
- */
-const generateMessageDisplayData = (index: number) => ({
-  subject: SUBJECTS[index % SUBJECTS.length],
-  senderName: SENDER_NAMES[index % SENDER_NAMES.length],
-  preview: PREVIEWS[index % PREVIEWS.length],
+const MESSAGE_DISPLAY_ENTRIES = Array.from({ length: DEFAULT_MESSAGE_LIMIT }, (_, index) => ({
+  subject: SUBJECTS[index],
+  senderName: SENDER_NAMES[index],
+  preview: PREVIEWS[index],
   sentAt: generateMessageDate(index).toISOString(),
-  unread: index % 3 === 0, // Every 3rd message is unread
-});
+  unread: index === 0 || index === 3 || index === 6,
+}));
 
 /**
  * GET /api/messages/recent
  *
  * Get recent messages with file attachments.
- * Each message contains up to 4 attachments from available files.
+ * Each message contains up to 2 attachments from available files.
  * Requires valid JWT authorization.
  *
  * Query Parameters:
- *   - limit: number (optional) - Number of messages to return (default: 50)
+ *   - limit: number (optional) - Number of messages to return (default: 8)
  *   - includeAttachments: boolean (optional) - Whether to include attachments (default: true)
  *
  * Response (200 OK):
@@ -137,8 +134,8 @@ router.get('/recent', (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || DEFAULT_MESSAGE_LIMIT;
     const includeAttachments = req.query.includeAttachments !== 'false';
 
-    // Get available files from storage
-    const availableFiles = listStorageFiles();
+    // Get available files from storage (sorted for deterministic grouping)
+    const availableFiles = listStorageFiles().sort((left, right) => left.localeCompare(right));
 
     if (availableFiles.length === 0) {
       res.status(200).json({
@@ -147,36 +144,36 @@ router.get('/recent', (req: Request, res: Response) => {
       return;
     }
 
+    const filesPerMessage = 2;
+    const totalMessages = Math.ceil(availableFiles.length / filesPerMessage);
+    const messageCount = Math.min(limit, totalMessages);
+
     // Generate messages with display data and attachments
     const messages = [];
 
-    for (let i = 0; i < limit; i++) {
+    for (let i = 0; i < messageCount; i++) {
       const messageId = uuidv4();
-      const displayData = generateMessageDisplayData(i);
+      const displayData = MESSAGE_DISPLAY_ENTRIES[i % MESSAGE_DISPLAY_ENTRIES.length];
       const attachments = [];
 
       if (includeAttachments) {
-        const usedFilenames = new Set<string>();
-        // Each message gets up to 4 attachments (skip duplicate filenames)
-        for (let j = 0; j < 4; j++) {
-          const fileIndex = (i * 4 + j) % availableFiles.length;
-          const filename = availableFiles[fileIndex];
+        const startIndex = i * filesPerMessage;
+        const endIndex = Math.min(startIndex + filesPerMessage, availableFiles.length);
 
-          if (usedFilenames.has(filename)) continue;
-          usedFilenames.add(filename);
-
+        for (let j = startIndex; j < endIndex; j++) {
+          const filename = availableFiles[j];
           const metadata = getFileMetadata(filename);
 
-          if (metadata) {
-            attachments.push({
-              id: uuidv4(),
-              name: metadata.filename,
-              filename: metadata.filename,
-              fileUrl: `/api/files/download`,
-              fileSizeBytes: metadata.size,
-              messageId: messageId,
-            });
-          }
+          if (!metadata) continue;
+
+          attachments.push({
+            id: `${metadata.filename}-${metadata.size}`,
+            name: metadata.filename,
+            filename: metadata.filename,
+            fileUrl: `/api/files/download`,
+            fileSizeBytes: metadata.size,
+            messageId: messageId,
+          });
         }
       }
 

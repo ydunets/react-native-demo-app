@@ -7,13 +7,17 @@ import { useQuery } from '@tanstack/react-query';
 
 import { axiosClient } from '@/api/axios-client';
 import { useIsLoggedIn, useIsHydrated } from '@/stores/auth';
-import type { Message, MessagesResponse } from '@/types/message';
+import { MessageWithAttachments } from '@/hooks/useMessageAttachments';
 
 const DEFAULT_LIMIT = 50;
 const STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
-const EMPTY_MESSAGES: Message[] = [];
+const EMPTY_MESSAGES: MessageWithAttachments[] = [];
 
-const fetchMessages = async (limit: number): Promise<Message[]> => {
+type MessagesResponse = {
+  messages?: MessageWithAttachments[];
+}
+
+const fetchMessages = async (limit: number): Promise<MessageWithAttachments[]> => {
   const { data } = await axiosClient.get<MessagesResponse>('/messages/recent', {
     params: { limit, includeAttachments: true },
   });
@@ -34,7 +38,7 @@ export const useMessages = (options: UseMessagesOptions = {}) => {
   // Only fetch when: store is hydrated, user is logged in, and enabled
   const shouldFetch = isHydrated && isLoggedIn && enabled;
 
-  const query = useQuery<Message[], Error>({
+  const query = useQuery<MessageWithAttachments[], Error>({
     queryKey: ['messages', limit],
     queryFn: () => fetchMessages(limit),
     staleTime: STALE_TIME_MS,

@@ -209,6 +209,20 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
   const downloadFileFromMessage = async (attachment: Attachment) => {
     const { name: filename } = attachment;
 
+    console.log(
+      '\x1b[36m',
+      `[Message Tap] id=${attachment.id} filename=${filename}`,
+      '\x1b[0m'
+    );
+    const queuedMatch = downloadQueueState.queue.find((item) => item.filename === filename);
+    if (queuedMatch) {
+      console.log(
+        '\x1b[36m',
+        `[Queue Match] queuedId=${queuedMatch.id} filename=${queuedMatch.filename}`,
+        '\x1b[0m'
+      );
+    }
+
     // Check if file already exists in cache
     const existsInCache = fileExistsInCache(filename);
     if (existsInCache) {

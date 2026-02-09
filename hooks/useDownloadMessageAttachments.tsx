@@ -31,7 +31,11 @@ export const useDownloadMessageAttachments = () => {
 
           if (exists) continue;
           try {
-            console.log('\x1b[36m', `[File Processing] Adding file to queue: ${attachment.name}`, '\x1b[0m');
+            console.log(
+              '\x1b[36m',
+              `[Queue Add] id=${attachment.id} filename=${attachment.name}`,
+              '\x1b[0m'
+            );
 
             addCommand({
               id: attachment.id,
