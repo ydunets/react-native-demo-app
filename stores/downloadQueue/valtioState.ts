@@ -109,6 +109,10 @@ export const downloadQueueState = proxy({
     return this.queue.length > 0;
   },
 
+  get canResumeFromBackground() {
+    return this.pausedDueToBackground && this.hasQueuedItems;
+  },
+
   get currentCommand(): DownloadCommand | null {
     return this.queue.length > 0 ? this.queue[0] : null;
   },
@@ -222,13 +226,8 @@ export const downloadQueueActions = {
     }
     
     downloadQueueState.pausedDueToBackground = false;
-    
-    // Only set isProcessing if there are items to process
-    if (downloadQueueState.hasQueuedItems) {
-      downloadQueueState.isProcessing = true;
-      return true;
-    }
-    return false;
+
+    return downloadQueueState.hasQueuedItems;
   },
 
   /**

@@ -8,14 +8,12 @@ export function useAppState() {
 
 	useEffect(() => {
 		function onChange(newState: AppStateStatus) {
-      if(newState === "background") {
+      if (newState === "background") {
         console.log("App went into the background")
         // Pause download queue when app goes to background
         downloadQueueActions.pauseDueToBackground()
       } else if (newState === "active") {
         console.log("App came to foreground")
-        // Resume download queue only if it was paused due to background
-        downloadQueueActions.resumeFromBackground()
       }
 			setAppState(newState)
 		}

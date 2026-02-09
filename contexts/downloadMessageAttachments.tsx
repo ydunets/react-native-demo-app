@@ -145,7 +145,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       
       if (isCancelled) {
         console.log('\x1b[33m', `[Download] Cancelled: ${filename}`, '\x1b[0m');
-        return undefined;
+        return;
       }
       
       console.warn(
@@ -156,7 +156,7 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       );
       await deleteCachedFile(filename);
       currentTaskRef.current = null;
-      return undefined;
+      return;
     }
   };
 
@@ -214,15 +214,6 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
       `[Message Tap] id=${attachment.id} filename=${filename}`,
       '\x1b[0m'
     );
-    const queuedMatch = downloadQueueState.queue.find((item) => item.filename === filename);
-    if (queuedMatch) {
-      console.log(
-        '\x1b[36m',
-        `[Queue Match] queuedId=${queuedMatch.id} filename=${queuedMatch.filename}`,
-        '\x1b[0m'
-      );
-    }
-
     // Check if file already exists in cache
     const existsInCache = fileExistsInCache(filename);
     if (existsInCache) {
@@ -239,6 +230,15 @@ export const DownloadMessageAttachmentsProvider = ({ children }: PropsWithChildr
     const filePath = await downloadFile({
       filename,
     });
+
+    if (!filePath) {
+      console.warn(
+        '\x1b[33m',
+        '[File Processing] Attachment download failed, keeping queued item',
+        '\x1b[0m'
+      );
+      return undefined;
+    }
 
     // Remove this file from queue if it was queued
     removeCommand(attachment.id);
